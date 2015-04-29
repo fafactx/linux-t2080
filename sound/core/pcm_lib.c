@@ -1964,9 +1964,6 @@ static int snd_pcm_lib_write_transfer(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 	char __user *buf = (char __user *) data + frames_to_bytes(runtime, off);
-	int i;
-	char tmp;
-
 	if (substream->ops->copy) {
 		if ((err = substream->ops->copy(substream, -1, hwoff, buf, frames)) < 0)
 			return err;
@@ -1974,22 +1971,6 @@ static int snd_pcm_lib_write_transfer(struct snd_pcm_substream *substream,
 		char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, hwoff);
 		if (copy_from_user(hwbuf, buf, frames_to_bytes(runtime, frames)))
 			return -EFAULT;
-
-		if (substream->data_swapped) {
-			switch (runtime->format) {
-			case SNDRV_PCM_FORMAT_S16_LE:
-				for (i = 0;
-				     i < frames_to_bytes(runtime, frames);
-				     i = i + 2) {
-					tmp = *(hwbuf + i);
-					*(hwbuf + i) = *(hwbuf + i + 1);
-					*(hwbuf + i + 1) = tmp;
-				}
-				break;
-			default:
-				return -EINVAL;
-			}
-		}
 	}
 	return 0;
 }
@@ -2205,30 +2186,11 @@ static int snd_pcm_lib_read_transfer(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int err;
 	char __user *buf = (char __user *) data + frames_to_bytes(runtime, off);
-	int i;
-	char tmp;
-
 	if (substream->ops->copy) {
 		if ((err = substream->ops->copy(substream, -1, hwoff, buf, frames)) < 0)
 			return err;
 	} else {
 		char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, hwoff);
-		if (substream->data_swapped) {
-			switch (runtime->format) {
-			case SNDRV_PCM_FORMAT_S16_LE:
-				for (i = 0;
-				     i < frames_to_bytes(runtime, frames);
-				     i = i + 2) {
-					tmp = *(hwbuf + i);
-					*(hwbuf + i) = *(hwbuf + i + 1);
-					*(hwbuf + i + 1) = tmp;
-				}
-				break;
-			default:
-				return -EINVAL;
-			}
-		}
-
 		if (copy_to_user(buf, hwbuf, frames_to_bytes(runtime, frames)))
 			return -EFAULT;
 	}
