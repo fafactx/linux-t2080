@@ -555,7 +555,6 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 47>,
 				<&edma0 1 46>;
-			big-endian-regs;
 			status = "disabled";
 		};
 
@@ -568,7 +567,6 @@
 			dma-names = "tx", "rx";
 			dmas = <&edma0 1 45>,
 				<&edma0 1 44>;
-			big-endian-regs;
 			status = "disabled";
 		};
 
