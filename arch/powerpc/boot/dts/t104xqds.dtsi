@@ -183,15 +183,19 @@
 
 					phy_s5_01: ethernet-phy@1c {
 						reg = <0x14>;
+						interrupts = <1 1 0 0>;
 					};
 					phy_s5_02: ethernet-phy@1d {
 						reg = <0x15>;
+						interrupts = <1 1 0 0>;
 					};
 					phy_s5_03: ethernet-phy@1e {
 						reg = <0x16>;
+						interrupts = <1 1 0 0>;
 					};
 					phy_s5_04: ethernet-phy@1f {
 						reg = <0x17>;
+						interrupts = <1 1 0 0>;
 					};
 				};
 
@@ -203,15 +207,19 @@
 
 					phy_s6_01: ethernet-phy@1c {
 						reg = <0x18>;
+						interrupts = <1 1 0 0>;
 					};
 					phy_s6_02: ethernet-phy@1d {
 						reg = <0x19>;
+						interrupts = <1 1 0 0>;
 					};
 					phy_s6_03: ethernet-phy@1e {
 						reg = <0x1a>;
+						interrupts = <1 1 0 0>;
 					};
 					phy_s6_04: ethernet-phy@1f {
 						reg = <0x1b>;
+						interrupts = <1 1 0 0>;
 					};
 				};
 
