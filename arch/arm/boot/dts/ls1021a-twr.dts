@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Freescale Semiconductor, Inc.
+ * Copyright 2013-2015 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -163,45 +163,45 @@
 			};
 
 			partition@20000 {
-				/* 1MB for DTB */
-				reg = <0x00020000 0x00100000>;
+				/* 896KB for DTB */
+				reg = <0x00020000 0x000e0000>;
 				label = "NOR DTB Image";
 			};
 
-			partition@120000 {
+			partition@100000 {
+				/* 1MB for bank0 u-boot Image */
+				reg = <0x00100000 0x00100000>;
+				label = "NOR bank0 u-boot Image";
+			};
+
+			partition@200000 {
 				/* 8 MB for Linux Kernel Image */
-				reg = <0x00120000 0x00800000>;
+				reg = <0x00200000 0x00800000>;
 				label = "NOR Linux Kernel Image";
 			};
 
-			partition@920000 {
-				/* 56MB for Ramdisk Root File System */
-				reg = <0x00920000 0x03600000>;
+			partition@a00000 {
+				/* 54MB for Ramdisk Root File System */
+				reg = <0x00a00000 0x03600000>;
 				label = "NOR Ramdisk Root File System Image";
-			};
-
-			partition@3f80000 {
-				/* 512KB for bank4 u-boot Image */
-				reg = <0x03f80000 0x80000>;
-				label = "NOR bank4 u-boot Image";
 			};
 
 			partition@4000000 {
 				/* 128KB for bank4 RCW Image */
-				reg = <0x04000000 0x20000>;
+				reg = <0x04000000 0x00020000>;
 				label = "NOR bank4 RCW Image";
 			};
 
-			partition@4020000 {
-				/* 63MB JFFS2 ROOT File System Image */
-				reg = <0x04020000 0x3f00000>;
-				label = "NOR JFFS2 ROOT File System Image";
+			partition@4100000 {
+				/* 1MB for bank4 u-boot Image */
+				reg = <0x04100000 0x00100000>;
+				label = "NOR bank0 u-boot Image";
 			};
 
-			partition@7f80000 {
-				/* 512KB for bank0 u-boot Image */
-				reg = <0x07f80000 0x80000>;
-				label = "NOR bank0 u-boot Image";
+			partition@4200000 {
+				/* 62MB JFFS2 ROOT File System Image */
+				reg = <0x04200000 0x03e00000>;
+				label = "NOR JFFS2 ROOT File System Image";
 			};
 		};
 };
