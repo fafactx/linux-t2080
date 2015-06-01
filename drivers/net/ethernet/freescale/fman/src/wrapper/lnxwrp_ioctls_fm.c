@@ -1456,7 +1456,7 @@ Status: feature not supported
                         }
                         goto invalid_port_id;
 
-                    case (e_FM_PORT_TYPE_OH_OFFLINE_PARSING):
+                    case (e_IOC_FM_PORT_TYPE_OH_OFFLINE_PARSING):
                         if (port_params->port_id && port_params->port_id < FM_MAX_NUM_OF_OH_PORTS) {
                             h_Port = p_LnxWrpFmDev->opPorts[port_params->port_id - 1].h_Dev;
                             break;
@@ -3523,7 +3523,7 @@ t_Error LnxwrpFmIOCTL(t_LnxWrpFmDev *p_LnxWrpFmDev, unsigned int cmd, unsigned l
             else
 #endif
             {
-                if (copy_from_user(&param, (void *)arg, sizeof(ioc_fm_counters_params_t)))
+                if (copy_from_user(&param, (void *)arg, sizeof(ioc_fm_ctrl_mon_counters_params_t)))
                     RETURN_ERROR(MINOR, E_WRITE_FAILED, NO_MSG);
             }
 

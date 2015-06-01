@@ -1594,14 +1594,13 @@ static int process_ep_req(struct fsl_udc *udc, int pipe,
 		struct fsl_req *curr_req)
 {
 	struct ep_td_struct *curr_td;
-	int	td_complete, actual, remaining_length, j, tmp;
+	int	actual, remaining_length, j, tmp;
 	int	status = 0;
 	int	errors = 0;
 	struct  ep_queue_head *curr_qh = &udc->ep_qh[pipe];
 	int direction = pipe % 2;
 
 	curr_td = curr_req->head;
-	td_complete = 0;
 	actual = curr_req->req.length;
 
 	for (j = 0; j < curr_req->dtd_count; j++) {
@@ -1646,11 +1645,9 @@ static int process_ep_req(struct fsl_udc *udc, int pipe,
 				status = -EPROTO;
 				break;
 			} else {
-				td_complete++;
 				break;
 			}
 		} else {
-			td_complete++;
 			VDBG("dTD transmitted successful");
 		}
 
@@ -1693,7 +1690,7 @@ static void dtd_complete_irq(struct fsl_udc *udc)
 		curr_ep = get_ep_by_pipe(udc, i);
 
 		/* If the ep is configured */
-		if (curr_ep->name == NULL) {
+		if (strncmp(curr_ep->name, "ep", 2)) {
 			WARNING("Invalid EP?");
 			continue;
 		}
@@ -2404,10 +2401,12 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 		usb_sys_regs = (void *)dr_regs + USB_DR_SYS_OFFSET;
 #endif
 
+#ifdef CONFIG_ARCH_MXC
 	/* Initialize USB clocks */
 	ret = fsl_udc_clk_init(pdev);
 	if (ret < 0)
 		goto err_iounmap_noclk;
+#endif
 
 	/* Read Device Controller Capability Parameters register */
 	dccparams = fsl_readl(&dr_regs->dccparams);
@@ -2447,9 +2446,11 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 		dr_controller_setup(udc_controller);
 	}
 
+#ifdef CONFIG_ARCH_MXC
 	ret = fsl_udc_clk_finalize(pdev);
 	if (ret)
 		goto err_free_irq;
+#endif
 
 	/* Setup gadget structure */
 	udc_controller->gadget.ops = &fsl_gadget_ops;
@@ -2513,7 +2514,9 @@ err_free_irq:
 err_iounmap:
 	if (pdata->exit)
 		pdata->exit(pdev);
+#ifdef CONFIG_ARCH_MXC
 	fsl_udc_clk_release();
+#endif
 err_iounmap_noclk:
 	iounmap(dr_regs);
 err_release_mem_region:
@@ -2541,8 +2544,9 @@ static int __exit fsl_udc_remove(struct platform_device *pdev)
 	udc_controller->done = &done;
 	usb_del_gadget_udc(&udc_controller->gadget);
 
+#ifdef CONFIG_ARCH_MXC
 	fsl_udc_clk_release();
-
+#endif
 	/* DR has been stopped in usb_gadget_unregister_driver() */
 	remove_proc_file();
 
@@ -2554,7 +2558,7 @@ static int __exit fsl_udc_remove(struct platform_device *pdev)
 	dma_pool_destroy(udc_controller->td_pool);
 	free_irq(udc_controller->irq, udc_controller);
 	iounmap(dr_regs);
-	if (pdata->operating_mode == FSL_USB2_DR_DEVICE)
+	if (res && (pdata->operating_mode == FSL_USB2_DR_DEVICE))
 		release_mem_region(res->start, resource_size(res));
 
 	/* free udc --wait for the release() finished */

@@ -65,7 +65,7 @@ static void to_talitos_ptr(struct talitos_ptr *talitos_ptr, dma_addr_t dma_addr)
  */
 static void map_single_talitos_ptr(struct device *dev,
 				   struct talitos_ptr *talitos_ptr,
-				   unsigned short len, void *data,
+				   unsigned int len, void *data,
 				   unsigned char extent,
 				   enum dma_data_direction dir)
 {
@@ -458,7 +458,7 @@ static void talitos_error(struct device *dev, u32 isr, u32 isr_lo)
 	struct talitos_private *priv = dev_get_drvdata(dev);
 	unsigned int timeout = TALITOS_TIMEOUT;
 	int ch, error, reset_dev = 0, reset_ch = 0;
-	u32 v, v_lo;
+	u32 v_lo;
 
 	for (ch = 0; ch < priv->num_channels; ch++) {
 		/* skip channels without errors */
@@ -467,7 +467,6 @@ static void talitos_error(struct device *dev, u32 isr, u32 isr_lo)
 
 		error = -EINVAL;
 
-		v = in_be32(priv->chan[ch].reg + TALITOS_CCPSR);
 		v_lo = in_be32(priv->chan[ch].reg + TALITOS_CCPSR_LO);
 
 		if (v_lo & TALITOS_CCPSR_LO_DOF) {
@@ -1052,7 +1051,7 @@ struct talitos_ahash_req_ctx {
 	unsigned int first;
 	unsigned int last;
 	unsigned int to_hash_later;
-	u64 nbuf;
+	unsigned int nbuf;
 	struct scatterlist bufsl[2];
 	struct scatterlist *psrc;
 };
@@ -1298,7 +1297,7 @@ static int sg_to_link_tbl(struct scatterlist *sg, int sg_count,
 {
 	int n_sg = sg_count;
 
-	while (n_sg--) {
+	while (sg && n_sg--) {
 		to_talitos_ptr(link_tbl_ptr, sg_dma_address(sg));
 		link_tbl_ptr->len = cpu_to_be16(sg_dma_len(sg));
 		link_tbl_ptr->j_extent = 0;
@@ -1316,7 +1315,8 @@ static int sg_to_link_tbl(struct scatterlist *sg, int sg_count,
 		sg_count--;
 		link_tbl_ptr--;
 	}
-	be16_add_cpu(&link_tbl_ptr->len, cryptlen);
+	link_tbl_ptr->len = cpu_to_be16(be16_to_cpu(link_tbl_ptr->len)
+					+ cryptlen);
 
 	/* tag end of link table */
 	link_tbl_ptr->j_extent = DESC_PTR_LNKTBL_RETURN;
@@ -1486,7 +1486,7 @@ static int sg_count(struct scatterlist *sg_list, int nbytes, bool *chained)
 	int sg_nents = 0;
 
 	*chained = false;
-	while (nbytes > 0) {
+	while (nbytes > 0 && sg) {
 		sg_nents++;
 		nbytes -= sg->length;
 		if (!sg_is_last(sg) && (sg + 1)->length == 0)
@@ -1825,8 +1825,7 @@ static int common_nonsnoop(struct talitos_edesc *edesc,
 					      (edesc->src_nents + 1) *
 					      sizeof(struct talitos_ptr));
 		desc->ptr[4].j_extent |= DESC_PTR_LNKTBL_JUMP;
-		sg_count = sg_to_link_tbl(areq->dst, sg_count, cryptlen,
-					  link_tbl_ptr);
+		sg_to_link_tbl(areq->dst, sg_count, cryptlen, link_tbl_ptr);
 		dma_sync_single_for_device(ctx->dev, edesc->dma_link_tbl,
 					   edesc->dma_len, DMA_BIDIRECTIONAL);
 	}
@@ -2961,6 +2960,7 @@ static struct talitos_crypto_alg *talitos_alg_alloc(struct device *dev,
 		break;
 	default:
 		dev_err(dev, "unknown algorithm type %d\n", t_alg->algt.type);
+		kfree(t_alg);
 		return ERR_PTR(-EINVAL);
 	}
 
