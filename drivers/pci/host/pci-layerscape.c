@@ -37,8 +37,8 @@
 #define SCFG_SPIMSICR		0x40
 #define SCFG_SPIMSICLRCR	0x90
 
-#define MSI_LS1021A_ADDR		0x1570040
-#define MSI_LS1021A_DATA(pex_idx)	(0xb3 + pex_idx)
+#define LS1021A_MSIIR_ADDR(idx)	(0x1570e00 + (idx) * 8)
+#define LS1021A_MSIR_OFF(idx)	(0x0e04 + (idx) * 8)
 
 /* Symbol Timer Register and Filter Mask Register 1 */
 #define PCIE_STRFMR1 0x71c
@@ -72,43 +72,53 @@ static int ls_pcie_link_up(struct pcie_port *pp)
 
 static u32 ls_pcie_get_msi_addr(struct pcie_port *pp)
 {
-	return MSI_LS1021A_ADDR;
+	struct ls_pcie *pcie = to_ls_pcie(pp);
+
+	return LS1021A_MSIIR_ADDR(pcie->index);
 }
 
 static u32 ls_pcie_get_msi_data(struct pcie_port *pp, int pos)
 {
-	struct ls_pcie *pcie = to_ls_pcie(pp);
-
-	return MSI_LS1021A_DATA(pcie->index);
+	return pos * 8;
 }
 
 static irqreturn_t ls_pcie_msi_irq_handler(int irq, void *data)
 {
 	struct pcie_port *pp = data;
 	struct ls_pcie *pcie = to_ls_pcie(pp);
-	unsigned int msi_irq;
+	unsigned long val;
+	int msi_irq, ret, pos;
 
-	/* clear the interrupt */
-	regmap_write(pcie->scfg, SCFG_SPIMSICLRCR,
-		     cpu_to_be32(MSI_LS1021A_DATA(pcie->index)));
+	regmap_read(pcie->scfg, LS1021A_MSIR_OFF(pcie->index), (u32 *) &val);
 
-	msi_irq = irq_find_mapping(pp->irq_domain, 0);
-	if (!msi_irq) {
-		/*
-		 * that's weird who triggered this?
-		 * just clear it
-		 */
-		dev_err(pcie->dev, "unexpected MSI\n");
-		return IRQ_NONE;
+	if (val) {
+		ret = IRQ_HANDLED;
+		pos = 0;
+		while ((pos = find_next_bit(&val, 32, pos)) != 32) {
+			msi_irq = irq_find_mapping(pp->irq_domain, 31 - pos);
+			if (!msi_irq) {
+				/*
+				 * that's weird who triggered this?
+				 * just clear it
+				 */
+				dev_err(pcie->dev, "unexpected MSI\n");
+				ret = IRQ_NONE;
+				continue;
+			}
+
+	#if defined(CONFIG_PREEMPT_RT_FULL) || defined(CONFIG_PREEMPT_RTB)
+			local_irq_disable();
+	#endif
+			generic_handle_irq(msi_irq);
+	#if defined(CONFIG_PREEMPT_RT_FULL) || defined(CONFIG_PREEMPT_RTB)
+			local_irq_enable();
+	#endif
+			ret = IRQ_HANDLED;
+			pos++;
+		}
 	}
-#if defined(CONFIG_PREEMPT_RT_FULL) || defined(CONFIG_PREEMPT_RTB)
-	local_irq_disable();
-#endif
-	generic_handle_irq(msi_irq);
-#if defined(CONFIG_PREEMPT_RT_FULL) || defined(CONFIG_PREEMPT_RTB)
-	local_irq_enable();
-#endif
-	return IRQ_HANDLED;
+
+	return ret;
 }
 
 static void ls_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
@@ -117,18 +127,6 @@ static void ls_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
 
 static void ls_pcie_msi_set_irq(struct pcie_port *pp, int irq)
 {
-}
-
-static void ls1021a_pcie_msi_fixup(struct pcie_port *pp)
-{
-	int i;
-
-	/*
-	 * LS1021A has only one MSI interrupt
-	 * Set all msi interrupts as used except the first one
-	 */
-	for (i = 1; i < MAX_MSI_IRQS; i++)
-		set_bit(i, pp->msi_irq_in_use);
 }
 
 static void ls_pcie_host_init(struct pcie_port *pp)
@@ -156,8 +154,6 @@ static void ls_pcie_host_init(struct pcie_port *pp)
 		val = ioread32(pcie->dbi + PCIE_STRFMR1);
 		val &= 0xffff;
 		iowrite32(val, pcie->dbi + PCIE_STRFMR1);
-
-		ls1021a_pcie_msi_fixup(pp);
 	}
 }
 
