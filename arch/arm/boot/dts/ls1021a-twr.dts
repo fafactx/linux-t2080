@@ -58,6 +58,22 @@
 	};
 };
 
+&can0 {
+	status = "okay";
+};
+
+&can1 {
+	status = "okay";
+};
+
+&can2 {
+	status = "disabled";
+};
+
+&can3 {
+	status = "disabled";
+};
+
 &dcu0 {
 	display = <&display>;
 	status = "okay";
