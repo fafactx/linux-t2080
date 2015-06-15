@@ -1012,10 +1012,18 @@ static int flexcan_chip_start(struct net_device *dev)
 	else
 		reg_mcr |= FLEXCAN_MCR_FEN;
 
+#if 0
 	reg_mcr |= FLEXCAN_MCR_FRZ | FLEXCAN_MCR_HALT |
 		FLEXCAN_MCR_SUPV | FLEXCAN_MCR_WRN_EN |
 		FLEXCAN_MCR_IDAM_C | FLEXCAN_MCR_SRX_DIS |
 		FLEXCAN_MCR_MAXMB(FLEXCAN_TX_BUF_ID);
+#else
+	reg_mcr |= FLEXCAN_MCR_FRZ | FLEXCAN_MCR_HALT |
+		FLEXCAN_MCR_SUPV | FLEXCAN_MCR_WRN_EN |
+		FLEXCAN_MCR_IDAM_C | FLEXCAN_MCR_MAXMB(FLEXCAN_TX_BUF_ID);
+	reg_mcr &= ~FLEXCAN_MCR_SRX_DIS;
+#endif
+
 	netdev_dbg(dev, "%s: writing mcr=0x%08x", __func__, reg_mcr);
 	priv->write(reg_mcr, &regs->mcr);
 
