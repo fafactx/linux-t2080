@@ -230,6 +230,7 @@ static struct mem_fragment *split_frag(struct mem_fragment *frag)
 	x[0]->refs = x[1]->refs = x[2]->refs = 0;
 	x[0]->root_len = x[1]->root_len = x[2]->root_len = frag->root_len;
 	x[0]->root_pfn = x[1]->root_pfn = x[2]->root_pfn = frag->root_pfn;
+	x[0]->name[0] = x[1]->name[0] = x[2]->name[0] = 0;
 	list_add_tail(&x[0]->list, &frag->list);
 	list_add_tail(&x[1]->list, &x[0]->list);
 	list_add_tail(&x[2]->list, &x[1]->list);
@@ -241,9 +242,10 @@ static __maybe_unused void dump_frags(void)
 	struct mem_fragment *frag;
 	int i = 0;
 	list_for_each_entry(frag, &mem_list, list) {
-		pr_info("FRAG %d: base 0x%llx pfn_base 0x%lx len 0x%llx root_len 0x%llx root_pfn 0x%lx refs %d\n",
+		pr_info("FRAG %d: base 0x%llx pfn_base 0x%lx len 0x%llx root_len 0x%llx root_pfn 0x%lx refs %d name %s\n",
 			i, frag->base, frag->pfn_base,
-			frag->len, frag->root_len, frag->root_pfn, frag->refs);
+			frag->len, frag->root_len, frag->root_pfn,
+			frag->refs, frag->name);
 		++i;
 	}
 }
@@ -922,7 +924,7 @@ static long ioctl_dma_map(struct file *fp, struct ctx *ctx,
 	unsigned long next_addr = PAGE_SIZE, populate;
 
 	/* error checking to ensure values copied from user space are valid */
-	if (!i->len || (i->len % PAGE_SIZE))
+	if (i->len % PAGE_SIZE)
 		return -EINVAL;
 
 	map = kmalloc(sizeof(*map), GFP_KERNEL);
@@ -942,6 +944,13 @@ static long ioctl_dma_map(struct file *fp, struct ctx *ctx,
 					ret = -EBUSY;
 					goto out;
 				}
+
+				/* Check to ensure size matches record */
+				if (i->len != frag->map_len && i->len) {
+					pr_err("ioctl_dma_map() Size requested does not match %s and is none zero. This usage will be disallowed in future release\n",
+					frag->name);
+				}
+
 				/* Check if this has already been mapped
 				   to this process */
 				list_for_each_entry(tmp, &ctx->maps, list)
@@ -1147,6 +1156,7 @@ map_match:
 		current_frag = list_entry(current_frag->list.prev,
 					  struct mem_fragment, list);
 	}
+	map->root_frag->name[0] = 0;
 	list_del(&map->list);
 	compress_frags();
 	spin_unlock(&mem_lock);
@@ -1669,6 +1679,8 @@ static long usdpaa_ioctl_compat(struct file *fp, unsigned int cmd,
 		ret = ioctl_dma_map(fp, ctx, &converted);
 		input.ptr = ptr_to_compat(converted.ptr);
 		input.phys_addr = converted.phys_addr;
+		input.len = converted.len;
+		input.flags = converted.flags;
 		strncpy(input.name, converted.name, USDPAA_DMA_NAME_MAX);
 		input.has_locking = converted.has_locking;
 		input.did_create = converted.did_create;
