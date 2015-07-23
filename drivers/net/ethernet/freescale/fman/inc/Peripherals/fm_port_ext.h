@@ -2510,23 +2510,6 @@ t_Error FM_PORT_PcdKgBindSchemes (t_Handle h_FmPort, t_FmPcdPortSchemesParams *p
 t_Error FM_PORT_PcdKgUnbindSchemes (t_Handle h_FmPort, t_FmPcdPortSchemesParams *p_PortScheme);
 
 /**************************************************************************//**
- @Function      FM_PORT_PcdPrsModifyStartOffset
-
- @Description   Runtime change of the parser start offset within the header.
-                The routine may not be called while port
-                receives packets using the PCD functionalities, therefore port must be first detached
-                from the PCD, only than the routine may be called, and than port be attached to PCD again.
- @Param[in]     h_FmPort        A handle to a FM Port module.
- @Param[in]     p_FmPcdPrsStart A structure of parameters for defining the
-                                start point for the parser.
-
- @Return        E_OK on success; Error code otherwise.
-
- @Cautions      Allowed only following FM_PORT_Init(), FM_PORT_SetPCD() and FM_PORT_DetatchPCD().
-*//***************************************************************************/
-t_Error FM_PORT_PcdPrsModifyStartOffset (t_Handle h_FmPort, t_FmPcdPrsStart *p_FmPcdPrsStart);
-
-/**************************************************************************//**
  @Function      FM_PORT_GetIPv4OptionsCount
 
  @Description   TODO

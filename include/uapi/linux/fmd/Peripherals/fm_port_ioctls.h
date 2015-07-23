@@ -749,18 +749,6 @@ typedef struct ioc_fm_port_pcd_fqids_params_t {
 #endif
 #define FM_PORT_IOC_PCD_KG_UNBIND_SCHEMES _IOW(FM_IOC_TYPE_BASE, FM_PORT_IOC_NUM(31), ioc_fm_pcd_port_schemes_params_t)
 
-/**************************************************************************//**
- @Function      FM_PORT_PcdPrsModifyStartOffset
-
- @Description   Runtime change of the parser start offset within the header.
-
- @Param[in]     ioc_fm_pcd_prs_start_t  A structure of parameters for defining the
-                                        start point for the parser.
-
- @Return        0 on success; error code otherwise.
-*//***************************************************************************/
-#define FM_PORT_IOC_PCD_PRS_MODIFY_START_OFFSET _IOW(FM_IOC_TYPE_BASE, FM_PORT_IOC_NUM(32), ioc_fm_pcd_prs_start_t)
-
 typedef struct ioc_fm_port_mac_addr_params_t {
     uint8_t addr[ENET_NUM_OCTETS_PER_ADDRESS];
 } ioc_fm_port_mac_addr_params_t;

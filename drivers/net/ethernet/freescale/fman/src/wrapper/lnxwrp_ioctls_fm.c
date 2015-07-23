@@ -4112,43 +4112,6 @@ t_Error LnxwrpFmPortIOCTL(t_LnxWrpFmPortDev *p_LnxWrpFmPortDev, unsigned int cmd
             break;
         }
 
-        case FM_PORT_IOC_PCD_PRS_MODIFY_START_OFFSET:
-        {
-            ioc_fm_pcd_prs_start_t *param;
-
-            param = (ioc_fm_pcd_prs_start_t *) XX_Malloc(sizeof(ioc_fm_pcd_prs_start_t));
-            if (!param)
-                RETURN_ERROR(MINOR, E_NO_MEMORY, ("IOCTL FM PORT"));
-
-            memset(param, 0, sizeof(ioc_fm_pcd_prs_start_t));
-
-#if defined(CONFIG_COMPAT)
-            if (compat)
-            {
-                if (copy_from_user(param, (ioc_fm_pcd_prs_start_t *)compat_ptr(arg),
-                                   sizeof(ioc_fm_pcd_prs_start_t)))
-                {
-                    XX_Free(param);
-                    RETURN_ERROR(MINOR, E_WRITE_FAILED, NO_MSG);
-                }
-            }
-            else
-#endif
-            {
-                if (copy_from_user(param, (ioc_fm_pcd_prs_start_t *)arg,
-                                   sizeof(ioc_fm_pcd_prs_start_t)))
-                {
-                    XX_Free(param);
-                    RETURN_ERROR(MINOR, E_WRITE_FAILED, NO_MSG);
-                }
-            }
-
-            err = FM_PORT_PcdPrsModifyStartOffset(p_LnxWrpFmPortDev->h_Dev, (t_FmPcdPrsStart *)param);
-
-            XX_Free(param);
-            break;
-        }
-
         case FM_PORT_IOC_PCD_PLCR_ALLOC_PROFILES:
         {
             uint16_t num;
