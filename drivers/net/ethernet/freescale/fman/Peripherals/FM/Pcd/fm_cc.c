@@ -270,7 +270,7 @@ static void FillAdOfTypeContLookup(t_Handle h_Ad,
     t_AdOfTypeContLookup *p_AdContLookup = (t_AdOfTypeContLookup *)h_Ad;
     t_Handle h_TmpAd;
     t_FmPcd *p_FmPcd = (t_FmPcd*)h_FmPcd;
-    uint32_t tmpReg32;
+    uint32_t tmpReg32, agingMask;
     t_Handle p_AdNewPtr = NULL;
 
     UNUSED(h_Manip);
@@ -367,8 +367,16 @@ static void FillAdOfTypeContLookup(t_Handle h_Ad,
         tmpReg32 |= p_Node->parseCode;
         WRITE_UINT32(p_AdContLookup->pcAndOffsets, tmpReg32);
 
-        Mem2IOCpy32((void*)&p_AdContLookup->gmask, p_Node->p_GlblMask,
-                    CC_GLBL_MASK_SIZE);
+        if (p_Node->agingSupport)
+        {
+            /* Building a mask of 1-s for all node's keys */
+            agingMask = CC_BUILD_AGING_MASK(p_Node->numOfKeys);
+            Mem2IOCpy32((void*)&p_AdContLookup->gmask, &agingMask,
+                        CC_AGING_MASK_SIZE);
+        }
+        else
+            Mem2IOCpy32((void*)&p_AdContLookup->gmask, p_Node->p_GlblMask,
+                        CC_GLBL_MASK_SIZE);
     }
 }
 
@@ -851,6 +859,7 @@ static t_Handle BuildNewAd(
     p_FmPcdCcNodeTmp->h_AdTable =
             p_FmPcdModifyCcKeyAdditionalParams->p_AdTableNew;
 
+    p_FmPcdCcNodeTmp->agingSupport = p_CcNode->agingSupport;
     p_FmPcdCcNodeTmp->lclMask = p_CcNode->lclMask;
     p_FmPcdCcNodeTmp->parseCode = p_CcNode->parseCode;
     p_FmPcdCcNodeTmp->offset = p_CcNode->offset;
@@ -897,7 +906,8 @@ static t_Handle BuildNewAd(
 static t_Error DynamicChangeHc(
         t_Handle h_FmPcd, t_List *h_OldPointersLst, t_List *h_NewPointersLst,
         t_FmPcdModifyCcKeyAdditionalParams *p_AdditionalParams,
-        bool useShadowStructs)
+        bool useShadowStructs,
+        e_FmCcModifyState modifyState)
 {
     t_List *p_PosOld, *p_PosNew;
     uint32_t oldAdAddrOffset, newAdAddrOffset;
@@ -942,7 +952,15 @@ static t_Error DynamicChangeHc(
             }
 
             /* Invoke host command to copy from new AD to old AD */
-            err = FmHcPcdCcDoDynamicChange(((t_FmPcd *)h_FmPcd)->h_Hc,
+            if ((!p_AdditionalParams->tree) &&
+                    (((t_FmPcdCcNode *)(p_AdditionalParams->h_CurrentNode))->agingSupport))
+                err = FmHcPcdCcDoDynamicChangeWithAging(((t_FmPcd *)h_FmPcd)->h_Hc,
+                        oldAdAddrOffset,
+                        newAdAddrOffset,
+                        modifyState,
+                        p_AdditionalParams->savedKeyIndex);
+            else
+                err = FmHcPcdCcDoDynamicChange(((t_FmPcd *)h_FmPcd)->h_Hc,
                                            oldAdAddrOffset, newAdAddrOffset);
             if (err)
             {
@@ -990,7 +1008,8 @@ static t_Error DoDynamicChange(
 
         /* Invoke host-command to copy from the new Ad to existing Ads */
         err = DynamicChangeHc(h_FmPcd, h_OldPointersLst, h_NewPointersLst,
-                              p_AdditionalParams, useShadowStructs);
+                              p_AdditionalParams, useShadowStructs,
+                              p_AdditionalParams->modifyState);
         if (err)
             RETURN_ERROR(MAJOR, err, NO_MSG);
 
@@ -1029,7 +1048,8 @@ static t_Error DoDynamicChange(
 
 			/* HC to copy from the new Ad (old updated structures) to current Ad (uses shadow structures) */
 			err = DynamicChangeHc(h_FmPcd, h_OldPointersLst, h_NewPointersLst,
-								  p_AdditionalParams, useShadowStructs);
+								  p_AdditionalParams, useShadowStructs,
+								  e_MODIFY_STATE_CHANGE);
 			if (err)
 				RETURN_ERROR(MAJOR, err, NO_MSG);
 		}
@@ -1693,7 +1713,8 @@ t_Error ValidateNextEngineParams(
 static uint8_t GetGenParseCode(e_FmPcdExtractFrom src,
                                uint32_t offset, bool glblMask,
                                uint8_t *parseArrayOffset, bool fromIc,
-                               ccPrivateInfo_t icCode)
+                               ccPrivateInfo_t icCode,
+                               bool aging)
 {
     if (!fromIc)
     {
@@ -1723,7 +1744,10 @@ static uint8_t GetGenParseCode(e_FmPcdExtractFrom src,
         {
             case (CC_PRIVATE_INFO_IC_KEY_EXACT_MATCH):
                 *parseArrayOffset = 0x50;
-                return CC_PC_GENERIC_IC_GMASK;
+                if (aging)
+                    return CC_PC_GENERIC_IC_AGING_MASK;
+                else
+                    return CC_PC_GENERIC_IC_GMASK;
 
             case (CC_PRIVATE_INFO_IC_HASH_EXACT_MATCH):
                 *parseArrayOffset = 0x48;
@@ -3420,7 +3444,7 @@ static void UpdateAdPtrOfTreesWhichPointsOnCrntMdfNode(
 
 static t_FmPcdModifyCcKeyAdditionalParams * ModifyNodeCommonPart(
         t_Handle h_FmPcdCcNodeOrTree, uint16_t keyIndex,
-        e_ModifyState modifyState, bool ttlCheck, bool hashCheck, bool tree)
+        e_FmCcModifyState modifyState, bool ttlCheck, bool hashCheck, bool tree)
 {
     t_FmPcdModifyCcKeyAdditionalParams *p_FmPcdModifyCcKeyAdditionalParams;
     int i = 0, j = 0;
@@ -3503,6 +3527,7 @@ static t_FmPcdModifyCcKeyAdditionalParams * ModifyNodeCommonPart(
 
     p_FmPcdModifyCcKeyAdditionalParams->h_CurrentNode = h_FmPcdCcNodeOrTree;
     p_FmPcdModifyCcKeyAdditionalParams->savedKeyIndex = keyIndex;
+    p_FmPcdModifyCcKeyAdditionalParams->modifyState = modifyState;
 
     while (i < numOfKeys)
     {
@@ -4527,7 +4552,7 @@ static t_Error MatchTableSet(t_Handle h_FmPcd, t_FmPcdCcNode *p_CcNode,
             p_CcNode->parseCode = GetGenParseCode(
                     p_CcNodeParam->extractCcParams.extractNonHdr.src,
                     p_CcNode->offset, glblMask, &p_CcNode->prsArrayOffset,
-                    fromIc, icCode);
+                    fromIc, icCode, p_CcNode->agingSupport);
 
             if (p_CcNode->parseCode == CC_PC_GENERIC_IC_HASH_INDEXED)
             {
@@ -4541,6 +4566,7 @@ static t_Error MatchTableSet(t_Handle h_FmPcd, t_FmPcdCcNode *p_CcNode,
                 }
             }
             if ((p_CcNode->parseCode == CC_PC_GENERIC_IC_GMASK)
+                    || (p_CcNode->parseCode == CC_PC_GENERIC_IC_AGING_MASK)
                     || (p_CcNode->parseCode == CC_PC_GENERIC_IC_HASH_INDEXED))
             {
                 p_CcNode->offset += p_CcNode->prsArrayOffset;
@@ -5733,6 +5759,58 @@ t_Error FmPcdCcModifyKeyAndNextEngine(t_Handle h_FmPcd, t_Handle h_FmPcdCcNode,
         RELEASE_LOCK(p_FmPcd->shadowLock);
 
     return err;
+}
+
+static t_Error FmPcdCcGetAgingMask(t_Handle h_FmPcd,
+                                   t_Handle h_FmPcdCcNode,
+                                   uint16_t keyIndex,
+                                   bool reset,
+                                   uint32_t *p_Mask)
+{
+    t_FmPcd *p_FmPcd = (t_FmPcd *)h_FmPcd;
+    t_FmPcdCcNode *p_CcNode = (t_FmPcdCcNode *)h_FmPcdCcNode;
+    t_FmPcdCcNextEngineParams *p_NextEngineParams = NULL;
+    t_List h_NodesLst;
+    uint32_t newAgingMask, oldAgingMask, adAddrOffset;
+    t_AdOfTypeContLookup *p_AdContLookup;
+    t_Error err;
+
+    INIT_LIST(&h_NodesLst);
+
+    /* Building a list of all action descriptors that point to this node.
+       No sharing on AD with aging, so there should be only one parent. */
+    if (!LIST_IsEmpty(&p_CcNode->ccPrevNodesLst))
+        UpdateAdPtrOfNodesWhichPointsOnCrntMdfNode(p_CcNode, &h_NodesLst,
+                                                   &p_NextEngineParams);
+    ASSERT_COND(LIST_NumOfObjs(&h_NodesLst) == 1);
+
+    adAddrOffset = FmPcdCcGetNodeAddrOffsetFromNodeInfo(p_FmPcd, LIST_FIRST(&h_NodesLst));
+
+    if (reset)
+    {
+        if (keyIndex == FM_PCD_LAST_KEY_INDEX)
+            /* If no specific key index provided the entire aging mask will be reset */
+            newAgingMask = CC_BUILD_AGING_MASK(p_CcNode->numOfKeys);
+        else
+            /* Only the bit that corresponds to the provided index is reset,
+               other bits in the mask will be preserved */
+            newAgingMask = (0x80000000 >> keyIndex);
+
+        err = FmHcPcdCcResetAgingMask(p_FmPcd->h_Hc, adAddrOffset, newAgingMask, &oldAgingMask);
+        if (err)
+            RETURN_ERROR(MAJOR, err, NO_MSG);
+
+        *p_Mask = (oldAgingMask & newAgingMask);
+    }
+    else
+    {
+        p_AdContLookup = (t_AdOfTypeContLookup *)(PTR_MOVE(XX_PhysToVirt(p_FmPcd->physicalMuramBase), adAddrOffset));
+        *p_Mask = GET_UINT32(p_AdContLookup->gmask);
+    }
+
+    ReleaseLst(&h_NodesLst);
+
+    return E_OK;
 }
 
 uint32_t FmPcdCcGetNodeAddrOffsetFromNodeInfo(t_Handle h_FmPcd,
@@ -7167,6 +7245,14 @@ t_Handle FM_PCD_HashTableSet(t_Handle h_FmPcd, t_FmPcdHashTableParams *p_Param)
     if (p_Param->maxNumOfKeys % numOfSets)
         DBG(INFO, ("'maxNumOfKeys' is not a multiple of hash number of ways, so number of ways will be rounded up"));
 
+    if ((p_Param->agingSupport) && (numOfWays > 31))
+    {
+        XX_Free(p_ExactMatchCcNodeParam);
+        REPORT_ERROR(MAJOR, E_INVALID_VALUE,
+                     ("Aging supported enabled and %d keys requested per hash bucket. Aging cannot be supported when more then 31 keys", numOfWays));
+        return NULL;
+    }
+
     if ((p_Param->statisticsMode == e_FM_PCD_CC_STATS_MODE_FRAME)
             || (p_Param->statisticsMode == e_FM_PCD_CC_STATS_MODE_BYTE_AND_FRAME))
     {
@@ -7215,14 +7301,16 @@ t_Handle FM_PCD_HashTableSet(t_Handle h_FmPcd, t_FmPcdHashTableParams *p_Param)
 
     for (i = 0; i < numOfSets; i++)
     {
-        /* Each exact-match node will be marked as a 'bucket' and provided with a pointer to statistics counters,
-         to be used for 'miss' entry statistics */
+        /* Each exact-match node will be marked as a 'bucket' and provided with
+           a pointer to statistics counters, to be used for 'miss' entry
+           statistics */
         p_CcNode = (t_FmPcdCcNode *)XX_Malloc(sizeof(t_FmPcdCcNode));
         if (!p_CcNode)
             break;
         memset(p_CcNode, 0, sizeof(t_FmPcdCcNode));
 
         p_CcNode->isHashBucket = TRUE;
+        p_CcNode->agingSupport = p_Param->agingSupport;
         p_CcNode->h_MissStatsCounters = h_MissStatsCounters;
 
         err = MatchTableSet(h_FmPcd, p_CcNode, p_ExactMatchCcNodeParam);
@@ -7528,4 +7616,139 @@ t_Error FM_PCD_HashTableGetMissStatistics(
             p_HashTbl->keyAndNextEngineParams[0].nextEngineParams.params.ccParams.h_CcNode;
 
     return FM_PCD_MatchTableGetMissStatistics(h_HashBucket, p_MissStatistics);
+}
+
+t_Error FM_PCD_HashTableGetKeyAging(t_Handle h_HashTbl,
+                                    uint8_t *p_Key,
+                                    uint8_t keySize,
+                                    bool reset,
+                                    bool *p_KeyAging)
+{
+    t_FmPcdCcNode *p_HashTbl = (t_FmPcdCcNode *)h_HashTbl;
+    t_FmPcd *p_FmPcd;
+    t_Handle h_HashBucket;
+    uint8_t bucketIndex;
+    uint16_t lastIndex, keyIndex;
+    uint32_t agingMask, keyAgingBit;
+    t_Error err;
+
+    SANITY_CHECK_RETURN_ERROR(p_HashTbl, E_INVALID_HANDLE);
+    SANITY_CHECK_RETURN_ERROR(p_Key, E_NULL_POINTER);
+    SANITY_CHECK_RETURN_ERROR(p_KeyAging, E_NULL_POINTER);
+    p_FmPcd = (t_FmPcd *)p_HashTbl->h_FmPcd;
+    SANITY_CHECK_RETURN_ERROR(p_FmPcd, E_INVALID_HANDLE);
+    SANITY_CHECK_RETURN_ERROR(p_FmPcd->h_Hc, E_INVALID_HANDLE);
+
+    err = FM_PCD_MatchTableGetIndexedHashBucket(p_HashTbl, keySize, p_Key,
+                                                p_HashTbl->kgHashShift,
+                                                &h_HashBucket, &bucketIndex,
+                                                &lastIndex);
+    if (err)
+        RETURN_ERROR(MAJOR, err, NO_MSG);
+
+    if (!((t_FmPcdCcNode *)h_HashBucket)->agingSupport)
+        RETURN_ERROR(MAJOR, E_INVALID_STATE, ("Aging support was not enabled for this hash table"));
+
+    if (!FmPcdLockTryLockAll(p_FmPcd))
+    {
+        DBG(TRACE, ("FmPcdLockTryLockAll failed"));
+        return ERROR_CODE(E_BUSY);
+    }
+
+    err = FindKeyIndex(h_HashBucket, keySize, p_Key, NULL, &keyIndex);
+    if (GET_ERROR_TYPE(err) != E_OK)
+    {
+        FmPcdLockUnlockAll(p_FmPcd);
+        RETURN_ERROR(
+                MAJOR,
+                err,
+                ("The received key and mask pair was not found in the match table of the provided node"));
+    }
+
+    err = FmPcdCcGetAgingMask(p_FmPcd, h_HashBucket, keyIndex, reset, &agingMask);
+
+    keyAgingBit = (0x80000000 >> keyIndex);
+    *p_KeyAging = ((agingMask & keyAgingBit) ? TRUE : FALSE);
+
+    FmPcdLockUnlockAll(p_FmPcd);
+
+    switch(GET_ERROR_TYPE(err))
+    {
+        case E_OK:
+            return E_OK;
+
+        case E_BUSY:
+            DBG(TRACE, ("E_BUSY error"));
+            return ERROR_CODE(E_BUSY);
+
+        default:
+            RETURN_ERROR(MAJOR, err, NO_MSG);
+    }
+}
+
+t_Error FM_PCD_HashTableGetBucketAging(t_Handle h_HashTbl,
+                                       uint16_t bucketId,
+                                       bool reset,
+                                       uint32_t *p_BucketAgingMask,
+                                       uint8_t *agedKeysArray[31])
+{
+    t_FmPcdCcNode *p_HashTbl = (t_FmPcdCcNode *)h_HashTbl;
+    t_FmPcd *p_FmPcd;
+    t_FmPcdCcNode *p_HashBucket;
+    uint32_t tmpMask, keyIndex = 0, indx = 0;
+    t_Error err;
+
+    SANITY_CHECK_RETURN_ERROR(p_HashTbl, E_INVALID_HANDLE);
+    p_FmPcd = (t_FmPcd *)p_HashTbl->h_FmPcd;
+    SANITY_CHECK_RETURN_ERROR(p_FmPcd, E_INVALID_HANDLE);
+    SANITY_CHECK_RETURN_ERROR(p_FmPcd->h_Hc, E_INVALID_HANDLE);
+
+    p_HashBucket = (t_FmPcdCcNode *)(p_HashTbl->keyAndNextEngineParams[bucketId].nextEngineParams.params.ccParams.h_CcNode);
+
+    if (!p_HashBucket->agingSupport)
+        RETURN_ERROR(MAJOR, E_INVALID_STATE, ("Aging support was not enabled for this hash table"));
+
+    if (!FmPcdLockTryLockAll(p_FmPcd))
+    {
+        DBG(TRACE, ("FmPcdLockTryLockAll failed"));
+        return ERROR_CODE(E_BUSY);
+    }
+
+    err = FmPcdCcGetAgingMask(p_FmPcd, p_HashBucket, FM_PCD_LAST_KEY_INDEX, reset, p_BucketAgingMask);
+
+    /* If the user provided a valid pointer, the aged keys will be copied
+       into the provided array of pointers */
+    if ((agedKeysArray) && (*p_BucketAgingMask))
+    {
+        tmpMask = *p_BucketAgingMask;
+
+        while (tmpMask)
+        {
+            /* If a bit is set in the aging mask and it doesn't correspond to miss entry,
+               copy the key into the aged keys array */
+            if ((tmpMask & 0x80000000) && (keyIndex != p_HashBucket->numOfKeys))
+            {
+                memcpy(agedKeysArray[indx], p_HashBucket->keyAndNextEngineParams[keyIndex].key, p_HashBucket->userSizeOfExtraction);
+                indx++;
+            }
+
+            tmpMask = (tmpMask << 1);
+            keyIndex++;
+        }
+    }
+
+    FmPcdLockUnlockAll(p_FmPcd);
+
+    switch(GET_ERROR_TYPE(err))
+    {
+        case E_OK:
+            return E_OK;
+
+        case E_BUSY:
+            DBG(TRACE, ("E_BUSY error"));
+            return ERROR_CODE(E_BUSY);
+
+        default:
+            RETURN_ERROR(MAJOR, err, NO_MSG);
+    }
 }

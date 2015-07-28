@@ -1101,9 +1101,9 @@ typedef enum e_FmPcdAction {
 typedef enum e_FmPcdManipHdrInsrtType {
     e_FM_PCD_MANIP_INSRT_GENERIC,                   /**< Insert according to offset & size */
     e_FM_PCD_MANIP_INSRT_BY_HDR,                    /**< Insert according to protocol */
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
     e_FM_PCD_MANIP_INSRT_BY_TEMPLATE                /**< Insert template to start of frame */
-#endif /* FM_CAPWAP_SUPPORT */
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
 } e_FmPcdManipHdrInsrtType;
 
 /**************************************************************************//**
@@ -1155,23 +1155,23 @@ typedef enum e_FmPcdManipHdrInsrtSpecificL2 {
  @Description   Enumeration type for selecting QoS mapping mode
 
                 Note: In all cases except 'e_FM_PCD_MANIP_HDR_QOS_MAPPING_NONE'
-                User should instruct the port to read the parser-result
+                User should instruct the port to read the hash-result
 *//***************************************************************************/
 typedef enum e_FmPcdManipHdrQosMappingMode {
     e_FM_PCD_MANIP_HDR_QOS_MAPPING_NONE = 0,   /**< No mapping, QoS field will not be changed */
-    e_FM_PCD_MANIP_HDR_QOS_MAPPING_AS_IS, /**< QoS field will be overwritten by the last byte in the parser-result. */
+    e_FM_PCD_MANIP_HDR_QOS_MAPPING_AS_IS, /**< QoS field will be overwritten by the last byte in the hash-result. */
 } e_FmPcdManipHdrQosMappingMode;
 
 /**************************************************************************//**
  @Description   Enumeration type for selecting QoS source
 
                 Note: In all cases except 'e_FM_PCD_MANIP_HDR_QOS_SRC_NONE'
-                User should left room for the parser-result on input/output buffer
-                and instruct the port to read/write the parser-result to the buffer (RPD should be set)
+                User should left room for the hash-result on input/output buffer
+                and instruct the port to read/write the hash-result to the buffer (RPD should be set)
 *//***************************************************************************/
 typedef enum e_FmPcdManipHdrQosSrc {
     e_FM_PCD_MANIP_HDR_QOS_SRC_NONE = 0,        /**< TODO */
-    e_FM_PCD_MANIP_HDR_QOS_SRC_USER_DEFINED,    /**< QoS will be taken from the last byte in the parser-result. */
+    e_FM_PCD_MANIP_HDR_QOS_SRC_USER_DEFINED,    /**< QoS will be taken from the last byte in the hash-result. */
 } e_FmPcdManipHdrQosSrc;
 #endif /* (DPAA_VERSION >= 11) */
 
@@ -1193,6 +1193,7 @@ typedef enum e_FmPcdManipHdrInsrtByHdrType {
 *//***************************************************************************/
 typedef enum e_FmPcdManipHdrCustomType {
     e_FM_PCD_MANIP_HDR_CUSTOM_IP_REPLACE,           /**< Replace IPv4/IPv6 */
+    e_FM_PCD_MANIP_HDR_CUSTOM_GEN_FIELD_REPLACE,     /**< Replace IPv4/IPv6 */
 } e_FmPcdManipHdrCustomType;
 
 /**************************************************************************//**
@@ -1239,14 +1240,14 @@ typedef enum e_FmPcdManipReassemWaysNumber {
     e_FM_PCD_MANIP_EIGHT_WAYS_HASH      /**< Eight ways hash */
 } e_FmPcdManipReassemWaysNumber;
 
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
 /**************************************************************************//**
  @Description   Enumeration type for selecting type of statistics mode
 *//***************************************************************************/
 typedef enum e_FmPcdStatsType {
     e_FM_PCD_STATS_PER_FLOWID = 0       /**< Flow ID is used as index for getting statistics */
 } e_FmPcdStatsType;
-#endif /* FM_CAPWAP_SUPPORT */
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
 
 /**************************************************************************//**
  @Description   Enumeration type for selecting manipulation type
@@ -1988,6 +1989,12 @@ typedef struct t_FmPcdHashTableParams {
     uint8_t                     matchKeySize;               /**< Size of the exact match keys held by the hash buckets */
 
     t_FmPcdCcNextEngineParams   ccNextEngineParamsForMiss;  /**< Parameters for defining the next engine when a key is not matched */
+
+    bool                        agingSupport;               /**< TRUE to enable aging support for all keys of this hash table;
+                                                                 Aging status of a key enables the application to monitor if the
+                                                                 key was accessed for a certain period of time, meaning if a
+                                                                 packet that matches this key was received since this bit was last
+                                                                 set by the application */
 } t_FmPcdHashTableParams;
 
 /**************************************************************************//**
@@ -2131,7 +2138,7 @@ typedef struct t_FmManipHdrInfo {
     t_FmPcdFields                       fullField;      /**< Relevant only when byField = TRUE: Extract field */
 } t_FmManipHdrInfo;
 
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
 /**************************************************************************//**
  @Description   Parameters for defining an insertion manipulation
                 of type e_FM_PCD_MANIP_INSRT_TO_START_OF_FRAME_TEMPLATE
@@ -2221,8 +2228,8 @@ typedef struct t_FmPcdManipFragOrReasmParams {
                                                                  relevant if 'frag' = FALSE, 'hdr' = HEADER_TYPE_CAPWAP */
     } u;
 } t_FmPcdManipFragOrReasmParams;
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
 
-#endif /* FM_CAPWAP_SUPPORT */
 
 /**************************************************************************//**
  @Description   Parameters for defining header removal by header type
@@ -2564,6 +2571,24 @@ typedef struct t_FmPcdManipHdrFieldUpdateParams {
     } u;
 } t_FmPcdManipHdrFieldUpdateParams;
 
+
+
+/**************************************************************************//**
+ @Description   Parameters for defining custom header manipulation for generic field replacement
+*//***************************************************************************/
+typedef struct t_FmPcdManipHdrCustomGenFieldReplace {
+    uint8_t                         srcOffset;          /**< Location of new data - Offset from
+                                                             Parse Result  (>= 16, srcOffset+size <= 32, ) */
+    uint8_t                         dstOffset;          /**< Location of data to be overwritten - Offset from
+                                                             start of frame (dstOffset + size <= 256). */
+    uint8_t                         size;               /**< The number of bytes (<=16) to be replaced */
+    uint8_t                         mask;               /**< Optional 1 byte mask. Set to select bits for
+                                                             replacement (1 - bit will be replaced);
+                                                             Clear to use field as is. */
+    uint8_t                         maskOffset;         /**< Relevant if mask != 0;
+                                                             Mask offset within the replaces "size" */
+} t_FmPcdManipHdrCustomGenFieldReplace;
+
 /**************************************************************************//**
  @Description   Parameters for defining custom header manipulation for IP replacement
 *//***************************************************************************/
@@ -2583,9 +2608,10 @@ typedef struct t_FmPcdManipHdrCustomIpHdrReplace {
  @Description   Parameters for defining custom header manipulation
 *//***************************************************************************/
 typedef struct t_FmPcdManipHdrCustomParams {
-    e_FmPcdManipHdrCustomType               type;           /**< Type of header field update manipulation */
+    e_FmPcdManipHdrCustomType                   type;           /**< Type of header field update manipulation */
     union {
-        t_FmPcdManipHdrCustomIpHdrReplace   ipHdrReplace;   /**< Parameters IP header replacement */
+        t_FmPcdManipHdrCustomIpHdrReplace       ipHdrReplace;   /**< Parameters IP header replacement */
+        t_FmPcdManipHdrCustomGenFieldReplace    genFieldReplace;   /**< Parameters IP header replacement */
     } u;
 } t_FmPcdManipHdrCustomParams;
 
@@ -2604,12 +2630,19 @@ typedef struct t_FmPcdManipHdrInsrtSpecificL2Params {
  @Description   Parameters for defining IP insertion manipulation
 *//***************************************************************************/
 typedef struct t_FmPcdManipHdrInsrtIpParams {
-    bool    calcL4Checksum; /**< Calculate L4 checksum. */
-    e_FmPcdManipHdrQosMappingMode   mappingMode; /**< TODO */
-    uint8_t lastPidOffset;     /**< the offset of the last Protocol within
-                                 the inserted header */
-    uint16_t  id;           /**< 16 bit New IP ID */
-    t_FmPcdManipHdrInsrt insrt; /**< size and data to be inserted. */
+    bool                            calcL4Checksum; /**< Calculate L4 checksum. */
+    e_FmPcdManipHdrQosMappingMode   mappingMode;    /**< TODO */
+    uint8_t                         lastPidOffset;  /**< the offset of the last Protocol within
+                                                         the inserted header */
+    uint16_t                        id;         /**< 16 bit New IP ID */
+    bool                            dontFragOverwrite;
+    /**< IPv4 only. DF is overwritten with the hash-result next-to-last byte.
+     * This byte is configured to be overwritten when RPD is set. */
+    uint8_t                         lastDstOffset;
+    /**< IPv6 only. if routing extension exist, user should set the offset of the destination address
+     * in order to calculate UDP checksum pseudo header;
+     * Otherwise set it to '0'. */
+    t_FmPcdManipHdrInsrt            insrt;      /**< size and data to be inserted. */
 } t_FmPcdManipHdrInsrtIpParams;
 #endif /* (DPAA_VERSION >= 11) */
 
@@ -2624,7 +2657,7 @@ typedef struct t_FmPcdManipHdrInsrtByHdrParams {
                                                              /**< Used when type = e_FM_PCD_MANIP_INSRT_BY_HDR_SPECIFIC_L2:
                                                               Selects which L2 headers to insert */
 #if (DPAA_VERSION >= 11)
-        t_FmPcdManipHdrInsrtIpParams             ipParams;  /**< Used when type = e_FM_PCD_MANIP_INSRT_BY_HDR_IP */
+        t_FmPcdManipHdrInsrtIpParams            ipParams;  /**< Used when type = e_FM_PCD_MANIP_INSRT_BY_HDR_IP */
         t_FmPcdManipHdrInsrt                    insrt;     /**< Used when type is one of e_FM_PCD_MANIP_INSRT_BY_HDR_UDP,
                                                                 e_FM_PCD_MANIP_INSRT_BY_HDR_UDP_LITE, or
                                                                 e_FM_PCD_MANIP_INSRT_BY_HDR_CAPWAP */
@@ -2642,10 +2675,10 @@ typedef struct t_FmPcdManipHdrInsrtParams {
                                                                  relevant if 'type' = e_FM_PCD_MANIP_INSRT_BY_HDR */
         t_FmPcdManipHdrInsrtGenericParams       generic;    /**< Parameters for defining generic header insertion manipulation,
                                                                  relevant if 'type' = e_FM_PCD_MANIP_INSRT_GENERIC */
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
         t_FmPcdManipHdrInsrtByTemplateParams    byTemplate; /**< Parameters for defining header insertion manipulation by template,
                                                                  relevant if 'type' = e_FM_PCD_MANIP_INSRT_BY_TEMPLATE */
-#endif /* FM_CAPWAP_SUPPORT */
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
     } u;
 } t_FmPcdManipHdrInsrtParams;
 
@@ -2678,8 +2711,14 @@ typedef struct t_FmPcdManipHdrParams {
     bool                                        custom;             /**< TRUE, to define custom manipulation */
     t_FmPcdManipHdrCustomParams                 customParams;       /**< Parameters for custom manipulation, relevant if 'custom' = TRUE */
 
-    bool                                        dontParseAfterManip;/**< FALSE to activate the parser a second time after
-                                                                         completing the manipulation on the frame */
+    bool                                        dontParseAfterManip;/**< TRUE to de-activate the parser after the manipulation defined in this node.
+                                                                                          Restrictions:
+                                                                                          1. MUST be set if the next engine after the CC is not another CC node
+                                                                                          (but rather Policer or Keygen), and this is the last (no h_NextManip) in a chain
+                                                                                          of manipulation nodes. This includes single nodes (i.e. no h_NextManip and
+                                                                                          also never pointed as h_NextManip of other manipulation nodes)
+                                                                                          2. MUST be set if the next engine after the CC is another CC node, and
+                                                                                          this is NOT the last manipulation node (i.e. it has h_NextManip).*/
 } t_FmPcdManipHdrParams;
 
 /**************************************************************************//**
@@ -2729,11 +2768,11 @@ typedef struct t_FmPcdManipParams {
                                                                      Handle to another (previously defined) manipulation node;
                                                                      Allows concatenation of manipulation actions;
                                                                      This parameter is optional and may be NULL. */
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
     bool                                    fragOrReasm;        /**< TRUE, if defined fragmentation/reassembly manipulation */
     t_FmPcdManipFragOrReasmParams           fragOrReasmParams;  /**< Parameters for fragmentation/reassembly manipulation,
                                                                      relevant if fragOrReasm = TRUE */
-#endif /* FM_CAPWAP_SUPPORT */
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
 } t_FmPcdManipParams;
 
 /**************************************************************************//**
@@ -2864,15 +2903,14 @@ typedef struct t_FmPcdFrmReplicGroupParams {
 } t_FmPcdFrmReplicGroupParams;
 #endif /* (DPAA_VERSION >= 11) */
 
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
 /**************************************************************************//**
  @Description   structure for defining statistics node
 *//***************************************************************************/
 typedef struct t_FmPcdStatsParams {
     e_FmPcdStatsType    type;   /**< type of statistics node */
 } t_FmPcdStatsParams;
-#endif /* FM_CAPWAP_SUPPORT */
-
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
 
 /**************************************************************************//**
  @Function      FM_PCD_NetEnvCharacteristicsSet
@@ -3726,6 +3764,77 @@ t_Error FM_PCD_HashTableGetMissStatistics(t_Handle                 h_HashTbl,
                                           t_FmPcdCcKeyStatistics   *p_MissStatistics);
 
 /**************************************************************************//**
+@Function      FM_PCD_HashTableGetKeyAging
+
+@Description   This routine may be used to retrieve the aging status for the
+               provided key.
+
+@Param[in]     h_HashTbl       A handle to a hash table
+@Param[in]     p_Key           Pointer to a key
+@Param[in]     keySize         Size of provided key
+@Param[in]     reset           TRUE if the user wishes to reset the aging
+                               status of this key to 1 after reading it;
+                               FALSE otherwise (key aging status will be
+                               read and not changed);
+@Param[out]    p_KeyAging      FALSE if the provided key was accessed since
+                               it's status was last set, TRUE otherwise.
+
+@Return        E_OK on success; Error code otherwise.
+
+@Cautions      Allowed only following FM_PCD_HashTableSet() with aging support
+               enabled.
+*//***************************************************************************/
+t_Error FM_PCD_HashTableGetKeyAging(t_Handle h_HashTbl,
+                                    uint8_t *p_Key,
+                                    uint8_t keySize,
+                                    bool reset,
+                                    bool *p_KeyAging);
+
+/**************************************************************************//**
+@Function      FM_PCD_HashTableGetBucketAging
+
+@Description   This routine may be used to retrieve the aging status for the
+               hash table bucket.
+
+@Param[in]     h_HashTbl            A handle to a hash table
+@Param[in]     bucketId             Id of the requested bucket
+@Param[in]     reset                TRUE if the user wishes to reset the aging
+                                    status of this bucket to all 1-s after reading;
+                                    FALSE otherwise (aging mask will be read
+                                    and not changed)
+@Param[out]    p_BucketAgingMask    Aging mask of the requested bucket;
+                                    A zero bit in the mask means that the key
+                                    represented by that bit was accessed since the
+                                    bit was last set, otherwise the bit remains
+                                    set to 1;
+                                    The MSB bit represents the first key in the
+                                    bucket, the 2nd MSB bit represents the second
+                                    key, etc..
+@Param[out]    agedKeysArray        If the user will provide a handle to a
+                                    preallocated array, this routine will copy
+                                    into that array all the keys from the requested
+                                    bucket for which the aging status is non-zero,
+                                    meaning all the keys that were not accessed since
+                                    their aging mask was last set;
+                                    The user may set this parameters to NULL to
+                                    disable this option
+
+@Return        E_OK on success; Error code otherwise
+
+@Cautions      Allowed only following FM_PCD_HashTableSet() with aging support
+               Enabled;
+               If agedKeysArray is provided, it must have 31 entries large enough
+               to hold the entire keys
+*//***************************************************************************/
+t_Error FM_PCD_HashTableGetBucketAging(t_Handle h_HashTbl,
+                                       uint16_t bucketId,
+                                       bool reset,
+                                       uint32_t *p_BucketAgingMask,
+                                       uint8_t *agedKeysArray[31]);
+
+
+
+/**************************************************************************//**
  @Function      FM_PCD_ManipNodeSet
 
  @Description   This routine should be called for defining a manipulation
@@ -3844,7 +3953,7 @@ t_Error FM_PCD_FrmReplicRemoveMember(t_Handle h_FrmReplicGroup,
                                      uint16_t memberIndex);
 #endif /* (DPAA_VERSION >= 11) */
 
-#ifdef FM_CAPWAP_SUPPORT
+#if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
 /**************************************************************************//**
  @Function      FM_PCD_StatisticsSetNode
 
@@ -3858,7 +3967,7 @@ t_Error FM_PCD_FrmReplicRemoveMember(t_Handle h_FrmReplicGroup,
  @Cautions      Allowed only following FM_PCD_Init().
 *//***************************************************************************/
 t_Handle FM_PCD_StatisticsSetNode(t_Handle h_FmPcd, t_FmPcdStatsParams *p_FmPcdstatsParams);
-#endif /* FM_CAPWAP_SUPPORT */
+#endif /* ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT)) */
 
 /** @} */ /* end of FM_PCD_Runtime_build_grp group */
 /** @} */ /* end of FM_PCD_Runtime_grp group */
