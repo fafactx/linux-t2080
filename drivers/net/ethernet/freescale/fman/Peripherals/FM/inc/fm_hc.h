@@ -71,6 +71,8 @@ t_Error     FmHcPcdKgSetSchemeCounter(t_Handle h_FmHc, t_Handle h_Scheme, uint32
 uint32_t    FmHcPcdKgGetSchemeCounter(t_Handle h_FmHc, t_Handle h_Scheme);
 
 t_Error     FmHcPcdCcDoDynamicChange(t_Handle h_FmHc, uint32_t oldAdAddrOffset, uint32_t newAdAddrOffset);
+t_Error     FmHcPcdCcDoDynamicChangeWithAging(t_Handle h_FmHc, uint32_t oldAdAddrOffset, uint32_t newAdAddrOffset, e_FmCcModifyState modifyState, uint16_t keyIndex);
+t_Error     FmHcPcdCcResetAgingMask(t_Handle h_FmHc, uint32_t adAddrOffset, uint32_t newAgeMask, uint32_t *p_OldAgeMask);
 
 t_Error     FmHcPcdPlcrSetProfile(t_Handle h_FmHc, t_Handle h_Profile, t_FmPcdPlcrProfileRegs *p_PlcrRegs);
 t_Error     FmHcPcdPlcrDeleteProfile(t_Handle h_FmHc, t_Handle h_Profile);

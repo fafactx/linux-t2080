@@ -49,15 +49,22 @@
 #define HC_HCOR_OPCODE_KG_SCM                                   0x1
 #define HC_HCOR_OPCODE_SYNC                                     0x2
 #define HC_HCOR_OPCODE_CC                                       0x3
+#define HC_HCOR_OPCODE_CC_AGE_MASK                              0x4
 #define HC_HCOR_OPCODE_CC_CAPWAP_REASSM_TIMEOUT                 0x5
 #define HC_HCOR_OPCODE_CC_REASSM_TIMEOUT                     0x10
 #define HC_HCOR_OPCODE_CC_IP_FRAG_INITIALIZATION             0x11
-#define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_ACTIVE_SHIFT       24
-#define HC_HCOR_EXTRA_REG_REASSM_TIMEOUT_TSBS_SHIFT          24
-#define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_RES_SHIFT          16
-#define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_RES_MASK           0xF
-#define HC_HCOR_ACTION_REG_IP_FRAG_SCRATCH_POOL_CMD_SHIFT    24
-#define HC_HCOR_ACTION_REG_IP_FRAG_SCRATCH_POOL_BPID         16
+#define HC_HCOR_OPCODE_CC_UPDATE_WITH_AGING                     0x13
+#define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_ACTIVE_SHIFT          24
+#define HC_HCOR_EXTRA_REG_REASSM_TIMEOUT_TSBS_SHIFT             24
+#define HC_HCOR_EXTRA_REG_CC_AGING_ADD                          0x80000000
+#define HC_HCOR_EXTRA_REG_CC_AGING_REMOVE                       0x40000000
+#define HC_HCOR_EXTRA_REG_CC_AGING_CHANGE_MASK                  0xC0000000
+#define HC_HCOR_EXTRA_REG_CC_REMOVE_INDX_SHIFT                  24
+#define HC_HCOR_EXTRA_REG_CC_REMOVE_INDX_MASK                   0x1F000000
+#define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_RES_SHIFT             16
+#define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_RES_MASK              0xF
+#define HC_HCOR_ACTION_REG_IP_FRAG_SCRATCH_POOL_CMD_SHIFT       24
+#define HC_HCOR_ACTION_REG_IP_FRAG_SCRATCH_POOL_BPID            16
 
 #define HC_HCOR_GBL                         0x20000000
 
@@ -110,7 +117,7 @@ typedef struct t_HcFrame {
         t_FmPcdCcCapwapReassmTimeoutParams      ccCapwapReassmTimeout;
         t_FmPcdCcReassmTimeoutParams            ccReassmTimeout;
     } hcSpecificData;
-} _PackedType t_HcFrame;
+} t_HcFrame;
 
 #if defined(__MWERKS__) && !defined(__GNUC__)
 #pragma pack(pop)
@@ -277,6 +284,7 @@ t_Handle FmHcConfigAndInit(t_FmHcParams *p_FmHcParams)
     }
 
     err = FM_PORT_ConfigMaxFrameLength(p_FmHc->h_HcPortDev, (uint16_t)sizeof(t_HcFrame));
+
     if (err != E_OK)
     {
         REPORT_ERROR(MAJOR, err, ("FM HC port init!"));
@@ -647,11 +655,10 @@ t_Error FmHcPcdKgSetClsPlan(t_Handle h_FmHc, t_FmPcdKgInterModuleClsPlanSet *p_S
         p_HcFrame->opcode = (uint32_t)(HC_HCOR_GBL | HC_HCOR_OPCODE_KG_SCM);
         p_HcFrame->actionReg  = FmPcdKgBuildWriteClsPlanBlockActionReg((uint8_t)(i / CLS_PLAN_NUM_PER_GRP));
         p_HcFrame->extraReg = HC_HCOR_KG_SCHEME_REGS_MASK;
-        ASSERT_COND(IN_RANGE(0, (i-p_Set->baseEntry) ,FM_PCD_MAX_NUM_OF_CLS_PLANS-1));
+
         idx = (uint8_t)(i - p_Set->baseEntry);
         ASSERT_COND(idx < FM_PCD_MAX_NUM_OF_CLS_PLANS);
         memcpy(&p_HcFrame->hcSpecificData.clsPlanEntries, &p_Set->vectors[idx], CLS_PLAN_NUM_PER_GRP*sizeof(uint32_t));
-
         p_HcFrame->commandSequence = seqNum;
 
         BUILD_FD(sizeof(t_HcFrame));
@@ -1176,6 +1183,97 @@ t_Error FmHcPcdCcDoDynamicChange(t_Handle h_FmHc, uint32_t oldAdAddrOffset, uint
     BUILD_FD(SIZE_OF_HC_FRAME_READ_OR_CC_DYNAMIC);
 
     err = EnQFrm(p_FmHc, &fmFd, seqNum);
+
+    PutBuf(p_FmHc, p_HcFrame, seqNum);
+
+    if (err != E_OK)
+        RETURN_ERROR(MAJOR, err, NO_MSG);
+
+    return E_OK;
+}
+
+t_Error FmHcPcdCcDoDynamicChangeWithAging(t_Handle h_FmHc,
+                                          uint32_t oldAdAddrOffset,
+                                          uint32_t newAdAddrOffset,
+                                          e_FmCcModifyState modifyState,
+                                          uint16_t keyIndex)
+{
+    t_FmHc                  *p_FmHc = (t_FmHc*)h_FmHc;
+    t_HcFrame               *p_HcFrame;
+    t_DpaaFD                fmFd;
+    t_Error                 err = E_OK;
+    uint32_t                seqNum;
+
+    SANITY_CHECK_RETURN_ERROR(p_FmHc, E_INVALID_HANDLE);
+
+    p_HcFrame = GetBuf(p_FmHc, &seqNum);
+    if (!p_HcFrame)
+        RETURN_ERROR(MINOR, E_NO_MEMORY, ("HC Frame object"));
+    memset(p_HcFrame, 0, sizeof(t_HcFrame));
+
+    p_HcFrame->opcode     = (uint32_t)(HC_HCOR_GBL | HC_HCOR_OPCODE_CC_UPDATE_WITH_AGING);
+    p_HcFrame->actionReg  = newAdAddrOffset;
+    p_HcFrame->actionReg |= 0xc0000000;
+    p_HcFrame->extraReg   = oldAdAddrOffset;
+
+    switch (modifyState)
+    {
+        case e_MODIFY_STATE_ADD:
+            p_HcFrame->extraReg |= HC_HCOR_EXTRA_REG_CC_AGING_ADD;
+            break;
+
+        case e_MODIFY_STATE_REMOVE:
+            p_HcFrame->extraReg |= HC_HCOR_EXTRA_REG_CC_AGING_REMOVE;
+            p_HcFrame->extraReg |= ((keyIndex << HC_HCOR_EXTRA_REG_CC_REMOVE_INDX_SHIFT) & HC_HCOR_EXTRA_REG_CC_REMOVE_INDX_MASK);
+            break;
+
+        case e_MODIFY_STATE_CHANGE:
+            p_HcFrame->extraReg &= ~HC_HCOR_EXTRA_REG_CC_AGING_CHANGE_MASK;
+            break;
+    }
+
+    p_HcFrame->commandSequence = seqNum;
+
+    BUILD_FD(SIZE_OF_HC_FRAME_READ_OR_CC_DYNAMIC);
+
+    err = EnQFrm(p_FmHc, &fmFd, seqNum);
+
+    PutBuf(p_FmHc, p_HcFrame, seqNum);
+
+    if (err != E_OK)
+        RETURN_ERROR(MAJOR, err, NO_MSG);
+
+    return E_OK;
+}
+
+t_Error FmHcPcdCcResetAgingMask(t_Handle h_FmHc, uint32_t adAddrOffset, uint32_t newAgeMask, uint32_t *p_OldAgeMask)
+{
+    t_FmHc                  *p_FmHc = (t_FmHc*)h_FmHc;
+    t_HcFrame               *p_HcFrame;
+    t_DpaaFD                fmFd;
+    t_Error                 err = E_OK;
+    uint32_t                seqNum;
+
+    SANITY_CHECK_RETURN_ERROR(p_FmHc, E_INVALID_HANDLE);
+
+    p_HcFrame = GetBuf(p_FmHc, &seqNum);
+    if (!p_HcFrame)
+        RETURN_ERROR(MINOR, E_NO_MEMORY, ("HC Frame object"));
+    memset(p_HcFrame, 0, sizeof(t_HcFrame));
+
+    p_HcFrame->opcode     = (uint32_t)(HC_HCOR_GBL | HC_HCOR_OPCODE_CC_AGE_MASK);
+    p_HcFrame->actionReg  = adAddrOffset;
+    p_HcFrame->extraReg   = newAgeMask;
+    p_HcFrame->commandSequence = seqNum;
+
+    BUILD_FD(SIZE_OF_HC_FRAME_READ_OR_CC_DYNAMIC);
+
+    err = EnQFrm(p_FmHc, &fmFd, seqNum);
+
+    /* On command completion the FMC writes to HCER the 'aging-mask' field
+       before it was updated by this command. This way the user may identify
+       which bits were cleared by FMC before setting them. */
+    *p_OldAgeMask = p_HcFrame->extraReg;
 
     PutBuf(p_FmHc, p_HcFrame, seqNum);
 
