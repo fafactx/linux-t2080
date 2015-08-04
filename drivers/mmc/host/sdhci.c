@@ -1750,6 +1750,11 @@ static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
 	if (host->version < SDHCI_SPEC_300)
 		return 0;
 
+	if (host->ops->signal_voltage_switch) {
+		host->ops->signal_voltage_switch(host, ios->signal_voltage);
+		return 0;
+	}
+
 	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
 	switch (ios->signal_voltage) {
@@ -1889,6 +1894,9 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		sdhci_runtime_pm_put(host);
 		return 0;
 	}
+
+	if (host->ops->set_tuning_block)
+		host->ops->set_tuning_block(host);
 
 	sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
 

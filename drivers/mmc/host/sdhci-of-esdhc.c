@@ -43,6 +43,11 @@ static u32 esdhc_readl(struct sdhci_host *host, int reg)
 	if (reg == SDHCI_CAPABILITIES_1) {
 		ret = sdhci_32bs_readl(host, ESDHC_CAPABILITIES_1);
 		switch (adapter_type) {
+		case ESDHC_ADAPTER_TYPE_1:
+			if (ret & ESDHC_MODE_SDR104)
+				host->mmc->caps2 |= MMC_CAP2_HS200;
+			ret &= ~ESDHC_MODE_MASK;
+			break;
 		case ESDHC_ADAPTER_TYPE_3:
 			if (ret & ESDHC_MODE_DDR50) {
 				ret &= ESDHC_MODE_DDR50_SEL;
@@ -637,6 +642,43 @@ static int esdhc_set_uhs_signaling(struct sdhci_host *host, unsigned int uhs)
 	return 0;
 }
 
+void esdhc_set_tuning_block(struct sdhci_host *host)
+{
+	u32 value;
+
+	esdhc_clock_control(host, false);
+	value = sdhci_readl(host, ESDHC_DMA_SYSCTL);
+	value |= ESDHC_FLUSH_ASYNC_FIFO;
+	sdhci_writel(host, value, ESDHC_DMA_SYSCTL);
+
+	value = sdhci_readl(host, ESDHC_TBCTL);
+	value |= ESDHC_TB_EN;
+	sdhci_writel(host, value, ESDHC_TBCTL);
+	esdhc_clock_control(host, true);
+
+}
+
+void esdhc_signal_voltage_switch(struct sdhci_host *host,
+				 unsigned char signal_voltage)
+{
+	u32 value;
+
+	value = sdhci_32bs_readl(host, ESDHC_PROCTL);
+
+	switch (signal_voltage) {
+	case MMC_SIGNAL_VOLTAGE_330:
+		value &= (~ESDHC_VOLT_SEL);
+		sdhci_32bs_writel(host, value, ESDHC_PROCTL);
+		break;
+	case MMC_SIGNAL_VOLTAGE_180:
+		value |= ESDHC_VOLT_SEL;
+		sdhci_32bs_writel(host, value, ESDHC_PROCTL);
+		break;
+	default:
+		return;
+	}
+}
+
 static const struct sdhci_ops sdhci_esdhc_ops = {
 	.read_l = esdhc_readl,
 	.read_w = esdhc_readw,
@@ -661,6 +703,8 @@ static const struct sdhci_ops sdhci_esdhc_ops = {
 	.adma_workaround = esdhci_of_adma_workaround,
 	.platform_bus_width = esdhc_pltfm_bus_width,
 	.set_uhs_signaling = esdhc_set_uhs_signaling,
+	.set_tuning_block = esdhc_set_tuning_block,
+	.signal_voltage_switch = esdhc_signal_voltage_switch,
 };
 
 static const struct sdhci_pltfm_data sdhci_esdhc_pdata = {
