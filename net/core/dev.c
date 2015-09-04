@@ -2470,7 +2470,7 @@ static void dev_gso_skb_destructor(struct sk_buff *skb)
  *	This function segments the given skb and stores the list of segments
  *	in skb->next.
  */
-static int dev_gso_segment(struct sk_buff *skb, netdev_features_t features)
+int dev_gso_segment(struct sk_buff *skb, netdev_features_t features)
 {
 	struct sk_buff *segs;
 
@@ -2489,6 +2489,13 @@ static int dev_gso_segment(struct sk_buff *skb, netdev_features_t features)
 
 	return 0;
 }
+EXPORT_SYMBOL(dev_gso_segment);
+
+void dev_set_skb_destructor(struct sk_buff *skb)
+{
+	skb->destructor = DEV_GSO_CB(skb)->destructor;
+}
+EXPORT_SYMBOL(dev_set_skb_destructor);
 
 static netdev_features_t harmonize_features(struct sk_buff *skb,
 					    const struct net_device *dev,
