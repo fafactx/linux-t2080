@@ -239,10 +239,10 @@ static void CalcRates(uint32_t                              bitFor1Micro,
      * into "integer" and "fraction" where the logic is - as many bits as possible for integer at
      * high rate, as many bits as possible for fraction at low rate.
      */
-    if (p_NonPassthroughAlgParam->comittedInfoRate > p_NonPassthroughAlgParam->peakOrAccessiveInfoRate)
-        GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->comittedInfoRate, tsuInTenthNanos, 0, &integer, &fraction);
+    if (p_NonPassthroughAlgParam->committedInfoRate > p_NonPassthroughAlgParam->peakOrExcessInfoRate)
+        GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->committedInfoRate, tsuInTenthNanos, 0, &integer, &fraction);
     else
-        GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->peakOrAccessiveInfoRate, tsuInTenthNanos, 0, &integer, &fraction);
+        GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->peakOrExcessInfoRate, tsuInTenthNanos, 0, &integer, &fraction);
 
     /* we shift integer, as in cir/pir it is represented by the MSB 16 bits, and
      * the LSB bits are for the fraction */
@@ -305,13 +305,13 @@ static void CalcRates(uint32_t                              bitFor1Micro,
      * This means that the FM TS register will now be used so that 'fppShift' bits are for
      * fraction and the rest for integer */
     /* now we re-calculate cir and pir_eir with the calculated FP */
-    GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->comittedInfoRate, tsuInTenthNanos, fppShift, &integer, &fraction);
+    GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->committedInfoRate, tsuInTenthNanos, fppShift, &integer, &fraction);
     *cir = (uint32_t)(integer << 16 | (fraction & 0xFFFF));
-    GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->peakOrAccessiveInfoRate, tsuInTenthNanos, fppShift, &integer, &fraction);
+    GetInfoRateReg(p_NonPassthroughAlgParam->rateMode, p_NonPassthroughAlgParam->peakOrExcessInfoRate, tsuInTenthNanos, fppShift, &integer, &fraction);
     *pir_eir = (uint32_t)(integer << 16 | (fraction & 0xFFFF));
 
-    *cbs     =  p_NonPassthroughAlgParam->comittedBurstSize;
-    *pbs_ebs =  p_NonPassthroughAlgParam->peakOrAccessiveBurstSize;
+    *cbs     =  p_NonPassthroughAlgParam->committedBurstSize;
+    *pbs_ebs =  p_NonPassthroughAlgParam->peakOrExcessBurstSize;
 
     /* convert FP as it should be written to reg.
      * 0-15 --> 16-31
@@ -402,8 +402,8 @@ static t_Error BuildProfileRegs(t_FmPcd                     *p_FmPcd,
         case    e_FM_PCD_PLCR_RFC_2698:
             /* Select algorithm MODE[ALG] = "01" */
             pemode |= FM_PCD_PLCR_PEMODE_ALG_RFC2698;
-            if (p_ProfileParams->nonPassthroughAlgParams.comittedInfoRate > p_ProfileParams->nonPassthroughAlgParams.peakOrAccessiveInfoRate)
-                RETURN_ERROR(MAJOR, E_INVALID_SELECTION, ("in RFC2698 Peak rate must be equal or larger than comittedInfoRate."));
+            if (p_ProfileParams->nonPassthroughAlgParams.committedInfoRate > p_ProfileParams->nonPassthroughAlgParams.peakOrExcessInfoRate)
+                RETURN_ERROR(MAJOR, E_INVALID_SELECTION, ("in RFC2698 Peak rate must be equal or larger than committedInfoRate."));
             goto cont_rfc;
         case    e_FM_PCD_PLCR_RFC_4115:
             /* Select algorithm MODE[ALG] = "10" */

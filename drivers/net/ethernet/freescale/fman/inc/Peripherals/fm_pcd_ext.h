@@ -2066,10 +2066,10 @@ typedef struct t_FmPcdPlcrByteRateModeParams {
 typedef struct t_FmPcdPlcrNonPassthroughAlgParams {
     e_FmPcdPlcrRateMode              rateMode;                       /**< Byte mode or Packet mode */
     t_FmPcdPlcrByteRateModeParams    byteModeParams;                 /**< Valid for Byte NULL for Packet */
-    uint32_t                         comittedInfoRate;               /**< KBits/Second or Packets/Second */
-    uint32_t                         comittedBurstSize;              /**< Bytes/Packets */
-    uint32_t                         peakOrAccessiveInfoRate;        /**< KBits/Second or Packets/Second */
-    uint32_t                         peakOrAccessiveBurstSize;       /**< Bytes/Packets */
+    uint32_t                         committedInfoRate;              /**< KBits/Second or Packets/Second */
+    uint32_t                         committedBurstSize;             /**< Bytes/Packets */
+    uint32_t                         peakOrExcessInfoRate;           /**< KBits/Second or Packets/Second */
+    uint32_t                         peakOrExcessBurstSize;          /**< Bytes/Packets */
 } t_FmPcdPlcrNonPassthroughAlgParams;
 
 /**************************************************************************//**

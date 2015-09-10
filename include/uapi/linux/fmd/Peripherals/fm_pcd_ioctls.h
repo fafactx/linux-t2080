@@ -1557,10 +1557,10 @@ typedef struct ioc_fm_pcd_plcr_byte_rate_mode_param_t {
 typedef struct ioc_fm_pcd_plcr_non_passthrough_alg_param_t {
     ioc_fm_pcd_plcr_rate_mode               rate_mode;                      /**< Byte / Packet */
     ioc_fm_pcd_plcr_byte_rate_mode_param_t  byte_mode_param;                /**< Valid for Byte NULL for Packet */
-    uint32_t                                comitted_info_rate;             /**< KBits/Sec or Packets/Sec */
-    uint32_t                                comitted_burst_size;            /**< KBits or Packets */
-    uint32_t                                peak_or_accessive_info_rate;    /**< KBits/Sec or Packets/Sec */
-    uint32_t                                peak_or_accessive_burst_size;   /**< KBits or Packets */
+    uint32_t                                committed_info_rate;            /**< KBits/Sec or Packets/Sec */
+    uint32_t                                committed_burst_size;           /**< KBits or Packets */
+    uint32_t                                peak_or_excess_info_rate;       /**< KBits/Sec or Packets/Sec */
+    uint32_t                                peak_or_excess_burst_size;      /**< KBits or Packets */
 } ioc_fm_pcd_plcr_non_passthrough_alg_param_t;
 
 /**************************************************************************//**
