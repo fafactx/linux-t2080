@@ -137,15 +137,6 @@ static void ls_pcie_host_init(struct pcie_port *pp)
 
 	dw_pcie_setup_rc(pp);
 
-	while (!ls_pcie_link_up(pp)) {
-		usleep_range(100, 1000);
-		count++;
-		if (count >= 200) {
-			dev_err(pp->dev, "phy link never came up\n");
-			return;
-		}
-	}
-
 	if (of_device_is_compatible(pcie->dev->of_node, "fsl,ls1021a-pcie")) {
 		/*
 		 * LS1021A Workaround for internal TKT228622
