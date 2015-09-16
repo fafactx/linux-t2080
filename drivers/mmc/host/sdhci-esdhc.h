@@ -38,6 +38,8 @@
 
 #define ESDHCI_PRESENT_STATE	0x24
 #define ESDHC_CLK_STABLE	0x00000008
+#define ESDHC_DLSL		0x0f000000
+#define ESDHC_CLSL		0x00800000
 
 #define ESDHC_PROCTL		0x28
 #define ESDHC_VOLT_SEL		0x00000400
@@ -83,6 +85,8 @@
 
 #define ESDHC_HOST_CONTROL_RES	0x01
 #define ESDHC_VOL_SEL		0x04
+
+void esdhc_clock_control(struct sdhci_host *host, bool enable);
 
 static inline void esdhc_set_clock(struct sdhci_host *host, unsigned int clock,
 				   unsigned int host_clock)
@@ -140,7 +144,10 @@ static inline void esdhc_set_clock(struct sdhci_host *host, unsigned int clock,
 	sdhci_writel(host, temp, ESDHC_SYSTEM_CONTROL);
 
 	mdelay(1);
+	host->clock = clock;
+	return;
 out:
+	esdhc_clock_control(host, false);
 	host->clock = clock;
 }
 

@@ -39,7 +39,17 @@ static bool peripheral_clk_available;
 static u32 esdhc_readl(struct sdhci_host *host, int reg)
 {
 	u32 ret;
+	u32 clsl;
+	u32 dlsl;
 
+	if (reg == SDHCI_PRESENT_STATE) {
+		ret = sdhci_32bs_readl(host, reg);
+		clsl = ret & ESDHC_CLSL;
+		dlsl = ret & ESDHC_DLSL;
+		ret &= ~((ESDHC_CLSL << 1) | (ESDHC_DLSL >> 4));
+		ret |= ((clsl << 1) | (dlsl >> 4));
+		return ret;
+	}
 	if (reg == SDHCI_CAPABILITIES_1) {
 		ret = sdhci_32bs_readl(host, ESDHC_CAPABILITIES_1);
 		switch (adapter_type) {
@@ -47,6 +57,15 @@ static u32 esdhc_readl(struct sdhci_host *host, int reg)
 			if (ret & ESDHC_MODE_SDR104)
 				host->mmc->caps2 |= MMC_CAP2_HS200;
 			ret &= ~ESDHC_MODE_MASK;
+			break;
+		case ESDHC_ADAPTER_TYPE_2:
+			if (ret & ESDHC_MODE_MASK) {
+				ret &= ~ESDHC_MODE_MASK;
+				/* If it exists UHS-I support, enable SDR50 */
+				host->mmc->caps |= (MMC_CAP_UHS_SDR50 |
+						    MMC_CAP_UHS_SDR25 |
+						    MMC_CAP_UHS_SDR12);
+			}
 			break;
 		case ESDHC_ADAPTER_TYPE_3:
 			if (ret & ESDHC_MODE_DDR50) {
@@ -563,7 +582,7 @@ static int esdhc_pltfm_bus_width(struct sdhci_host *host, int width)
 	return 0;
 }
 
-static void esdhc_clock_control(struct sdhci_host *host, bool enable)
+void esdhc_clock_control(struct sdhci_host *host, bool enable)
 {
 	u32 value;
 	u32 time_out;
@@ -658,9 +677,17 @@ void esdhc_set_tuning_block(struct sdhci_host *host)
 
 }
 
+static const struct of_device_id scfg_device_ids[] = {
+	{ .compatible = "fsl,t1040-scfg", },
+	{}
+};
+
 void esdhc_signal_voltage_switch(struct sdhci_host *host,
 				 unsigned char signal_voltage)
 {
+	struct device_node *scfg_node;
+	void __iomem *scfg_base;
+	u32 scfg_sdhciovselcr;
 	u32 value;
 
 	value = sdhci_32bs_readl(host, ESDHC_PROCTL);
@@ -671,6 +698,18 @@ void esdhc_signal_voltage_switch(struct sdhci_host *host,
 		sdhci_32bs_writel(host, value, ESDHC_PROCTL);
 		break;
 	case MMC_SIGNAL_VOLTAGE_180:
+		scfg_node = of_find_matching_node(NULL, scfg_device_ids);
+		if (scfg_node) {
+			scfg_base = of_iomap(scfg_node, 0);
+			of_node_put(scfg_node);
+			if (scfg_base) {
+				scfg_sdhciovselcr = 0x408;
+				out_be32(scfg_base + scfg_sdhciovselcr,
+						0x80000001);
+				iounmap(scfg_base);
+			}
+		}
+
 		value |= ESDHC_VOLT_SEL;
 		sdhci_32bs_writel(host, value, ESDHC_PROCTL);
 		break;
