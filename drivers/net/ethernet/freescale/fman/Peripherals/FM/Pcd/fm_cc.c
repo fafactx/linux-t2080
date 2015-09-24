@@ -6615,7 +6615,6 @@ t_Error FM_PCD_MatchTableModifyKey(t_Handle h_CcNode, uint16_t keyIndex,
 {
     t_FmPcd *p_FmPcd;
     t_FmPcdCcNode *p_CcNode = (t_FmPcdCcNode *)h_CcNode;
-    t_List h_List;
     t_Error err = E_OK;
 
     SANITY_CHECK_RETURN_ERROR(p_CcNode, E_INVALID_HANDLE);
@@ -6624,18 +6623,16 @@ t_Error FM_PCD_MatchTableModifyKey(t_Handle h_CcNode, uint16_t keyIndex,
     SANITY_CHECK_RETURN_ERROR(p_FmPcd, E_INVALID_HANDLE);
     SANITY_CHECK_RETURN_ERROR(p_FmPcd->h_Hc, E_INVALID_HANDLE);
 
-    INIT_LIST(&h_List);
 
-    err = FmPcdCcNodeTreeTryLock(p_FmPcd, p_CcNode, &h_List);
-    if (err)
+    if (!FmPcdLockTryLockAll(p_FmPcd))
     {
-        DBG(TRACE, ("Node's trees lock failed"));
+        DBG(TRACE, ("FmPcdLockTryLockAll failed"));
         return ERROR_CODE(E_BUSY);
     }
 
     err = FmPcdCcModifyKey(p_FmPcd, p_CcNode, keyIndex, keySize, p_Key, p_Mask);
 
-    FmPcdCcNodeTreeReleaseLock(p_FmPcd, &h_List);
+    FmPcdLockUnlockAll(p_FmPcd);
 
     switch(GET_ERROR_TYPE(err)
 )    {
