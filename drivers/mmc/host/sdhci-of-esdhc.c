@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/mmc/host.h>
+#include <linux/of_address.h>
 #include "sdhci-pltfm.h"
 #include "sdhci-esdhc.h"
 
@@ -704,8 +705,8 @@ void esdhc_signal_voltage_switch(struct sdhci_host *host,
 			of_node_put(scfg_node);
 			if (scfg_base) {
 				scfg_sdhciovselcr = 0x408;
-				out_be32(scfg_base + scfg_sdhciovselcr,
-						0x80000001);
+				iowrite32be(0x80000001,
+					    scfg_base + scfg_sdhciovselcr);
 				iounmap(scfg_base);
 			}
 		}
