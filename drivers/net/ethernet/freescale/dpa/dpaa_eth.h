@@ -426,6 +426,8 @@ void __hot _dpa_rx(struct net_device *net_dev,
 		u32 fqid,
 		int *count_ptr);
 int __hot dpa_tx(struct sk_buff *skb, struct net_device *net_dev);
+int __hot dpa_tx_extended(struct sk_buff *skb, struct net_device *net_dev,
+		struct qman_fq *egress_fq, struct qman_fq *conf_fq);
 struct sk_buff *_dpa_cleanup_tx_fd(const struct dpa_priv_s *priv,
 				   const struct qm_fd *fd);
 void __hot _dpa_process_parse_results(const fm_prs_result_t *parse_results,
@@ -549,31 +551,27 @@ static inline void clear_fd(struct qm_fd *fd)
 	fd->cmd = 0;
 }
 
-static inline struct qman_fq *_dpa_get_tx_conf_queue(
-		const struct dpa_priv_s *priv,
+static inline int _dpa_tx_fq_to_id(const struct dpa_priv_s *priv,
 		struct qman_fq *tx_fq)
 {
 	int i;
 
 	for (i = 0; i < DPAA_ETH_TX_QUEUES; i++)
 		if (priv->egress_fqs[i] == tx_fq)
-			return priv->conf_fqs[i];
+			return i;
 
-	return NULL;
+	return -EINVAL;
 }
 
 static inline int __hot dpa_xmit(struct dpa_priv_s *priv,
-			struct rtnl_link_stats64 *percpu_stats, int queue,
-			struct qm_fd *fd)
+			struct rtnl_link_stats64 *percpu_stats,
+			struct qm_fd *fd, struct qman_fq *egress_fq,
+			struct qman_fq *conf_fq)
 {
 	int err, i;
-	struct qman_fq *egress_fq;
 
-	egress_fq = priv->egress_fqs[queue];
 	if (fd->bpid == 0xff)
-		fd->cmd |= qman_fq_fqid(
-				_dpa_get_tx_conf_queue(priv, egress_fq)
-				);
+		fd->cmd |= qman_fq_fqid(conf_fq);
 
 	/* Trace this Tx fd */
 	trace_dpa_tx_fd(priv->net_dev, egress_fq, fd);

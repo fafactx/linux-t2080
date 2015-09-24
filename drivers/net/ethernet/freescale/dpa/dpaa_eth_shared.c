@@ -460,6 +460,7 @@ int __hot dpa_shared_tx(struct sk_buff *skb, struct net_device *net_dev)
 	void *dpa_bp_vaddr;
 	fm_prs_result_t parse_results;
 	fm_prs_result_t *parse_results_ref;
+	struct qman_fq *egress_fq, *conf_fq;
 
 	priv = netdev_priv(net_dev);
 	percpu_priv = __this_cpu_ptr(priv->percpu_priv);
@@ -570,7 +571,10 @@ int __hot dpa_shared_tx(struct sk_buff *skb, struct net_device *net_dev)
 				dpa_fd_length(&fd));
 	}
 
-	err = dpa_xmit(priv, &percpu_priv->stats, queue_mapping, &fd);
+	egress_fq = priv->egress_fqs[queue_mapping];
+	conf_fq = priv->conf_fqs[queue_mapping];
+
+	err = dpa_xmit(priv, &percpu_priv->stats, &fd, egress_fq, conf_fq);
 
 l3_l4_csum_failed:
 bpools_too_small_error:

@@ -1252,6 +1252,7 @@ int dpa_fq_init(struct dpa_fq *dpa_fq, bool td_enable)
 	struct qman_fq		*fq;
 	struct qm_mcc_initfq	 initfq;
 	struct qman_fq		*confq;
+	int			queue_id;
 
 	priv = netdev_priv(dpa_fq->net_dev);
 	dev = dpa_fq->net_dev->dev.parent;
@@ -1326,9 +1327,11 @@ int dpa_fq_init(struct dpa_fq *dpa_fq, bool td_enable)
 		 * which Tx queue it pairs with.
 		 */
 		if (dpa_fq->fq_type == FQ_TYPE_TX) {
-			confq = _dpa_get_tx_conf_queue(priv, &dpa_fq->fq_base);
-			if (confq) {
-				initfq.we_mask |= QM_INITFQ_WE_CONTEXTA;
+			queue_id = _dpa_tx_fq_to_id(priv, &dpa_fq->fq_base);
+			if (queue_id >= 0) {
+				confq = priv->conf_fqs[queue_id];
+				if (confq) {
+					initfq.we_mask |= QM_INITFQ_WE_CONTEXTA;
 			/* ContextA: OVOM=1 (use contextA2 bits instead of ICAD)
 			 *	     A2V=1 (contextA A2 field is valid)
 			 *           A0V=1 (contextA A0 field is valid)
@@ -1336,8 +1339,9 @@ int dpa_fq_init(struct dpa_fq *dpa_fq, bool td_enable)
 			 * ContextA A2: EBD=1 (deallocate buffers inside FMan)
 			 * ContextB B0(ASPID): 0 (absolute Virtual Storage ID)
 			 */
-				initfq.fqd.context_a.hi = 0x1e000000;
-				initfq.fqd.context_a.lo = 0x80000000;
+					initfq.fqd.context_a.hi = 0x1e000000;
+					initfq.fqd.context_a.lo = 0x80000000;
+				}
 			}
 		}
 

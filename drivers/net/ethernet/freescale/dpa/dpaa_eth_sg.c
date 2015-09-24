@@ -836,13 +836,9 @@ EXPORT_SYMBOL(skb_to_sg_fd);
 int __hot dpa_tx(struct sk_buff *skb, struct net_device *net_dev)
 {
 	struct dpa_priv_s	*priv;
-	struct qm_fd		 fd;
-	struct dpa_percpu_priv_s *percpu_priv;
-	struct rtnl_link_stats64 *percpu_stats;
-	int err = 0;
 	const int queue_mapping = dpa_get_queue_mapping(skb);
-	const bool nonlinear = skb_is_nonlinear(skb);
-	int *countptr, offset = 0;
+	struct qman_fq *egress_fq, *conf_fq;
+
 #ifdef CONFIG_FSL_DPAA_HOOKS
 	/* If there is a Tx hook, run it. */
 	if (dpaa_eth_hooks.tx &&
@@ -850,6 +846,25 @@ int __hot dpa_tx(struct sk_buff *skb, struct net_device *net_dev)
 		/* won't update any Tx stats */
 		return NETDEV_TX_OK;
 #endif
+
+	priv = netdev_priv(net_dev);
+	egress_fq = priv->egress_fqs[queue_mapping];
+	conf_fq = priv->conf_fqs[queue_mapping];
+
+	return dpa_tx_extended(skb, net_dev, egress_fq, conf_fq);
+}
+
+int __hot dpa_tx_extended(struct sk_buff *skb, struct net_device *net_dev,
+		struct qman_fq *egress_fq, struct qman_fq *conf_fq)
+{
+	struct dpa_priv_s	*priv;
+	struct qm_fd		 fd;
+	struct dpa_percpu_priv_s *percpu_priv;
+	struct rtnl_link_stats64 *percpu_stats;
+	int err = 0;
+	const bool nonlinear = skb_is_nonlinear(skb);
+	int *countptr, offset = 0;
+
 	priv = netdev_priv(net_dev);
 	/* Non-migratable context, safe to use __this_cpu_ptr */
 	percpu_priv = __this_cpu_ptr(priv->percpu_priv);
@@ -937,7 +952,7 @@ int __hot dpa_tx(struct sk_buff *skb, struct net_device *net_dev)
 		percpu_priv->tx_returned++;
 	}
 
-	if (unlikely(dpa_xmit(priv, percpu_stats, queue_mapping, &fd) < 0))
+	if (unlikely(dpa_xmit(priv, percpu_stats, &fd, egress_fq, conf_fq) < 0))
 		goto xmit_failed;
 
 	net_dev->trans_start = jiffies;
@@ -958,4 +973,4 @@ enomem:
 	dev_kfree_skb(skb);
 	return NETDEV_TX_OK;
 }
-
+EXPORT_SYMBOL(dpa_tx_extended);
