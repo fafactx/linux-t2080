@@ -1009,7 +1009,15 @@
 		fsl,ceetm-lfqid-range = <0xf00000 0x1000>;
 		fsl,ceetm-sp-range = <0 16>;
 		fsl,ceetm-lni-range = <0 8>;
-		fsl,ceetm-channel-range = <0 8>;
+		fsl,ceetm-channel-range = <0 32>;
+	};
+
+	qman-ceetm@1 {
+		compatible = "fsl,qman-ceetm";
+		fsl,ceetm-lfqid-range = <0xf10000 0x1000>;
+		fsl,ceetm-sp-range = <0 16>;
+		fsl,ceetm-lni-range = <0 8>;
+		fsl,ceetm-channel-range = <0 32>;
 	};
 };
 
