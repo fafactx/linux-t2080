@@ -187,7 +187,7 @@ int dpa_bp_shared_port_seed(struct dpa_bp *bp)
 	/* seed pool with buffers from that memory region */
 	if (bp->seed_pool) {
 		int count = bp->target_count;
-		size_t addr = bp->paddr;
+		dma_addr_t addr = bp->paddr;
 
 		while (count) {
 			struct bm_buffer bufs[8];
