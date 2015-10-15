@@ -328,7 +328,6 @@ extern const char gfar_driver_version[];
 #define DMACTRL_INIT_SETTINGS   0x000000c3
 #define DMACTRL_GRS             0x00000010
 #define DMACTRL_GTS             0x00000008
-#define DMACTRL_LE		0x00008000
 
 #define TSTAT_CLEAR_THALT_ALL	0xFF000000
 #define TSTAT_CLEAR_THALT	0x80000000
@@ -1379,9 +1378,6 @@ struct gfar_private {
 		rx_pause_en:1,
 		/* L2 SRAM alloc of BDs */
 		bd_l2sram_en:1;
-
-	/* little endian dma buffer and descriptor host interface */
-	unsigned int dma_endian_le;
 
 	/* The total tx and rx ring size for the enabled queues */
 	unsigned int total_tx_ring_size;
