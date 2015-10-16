@@ -767,7 +767,7 @@ void tbf_hook_fn_register(tbf_add_hook *add,
 struct Qdisc *tbf_get_inner_qdisc(struct Qdisc *sch);
 #endif
 
-#ifdef CONFIG_ASF_EGRESS_QOS
+#if defined(CONFIG_ASF_EGRESS_QOS) || defined(CONFIG_ASF_LINUX_QOS)
 typedef int asf_qos_fn_hook(struct sk_buff *skb);
 void asf_qos_fn_register(asf_qos_fn_hook *fn);
 #endif

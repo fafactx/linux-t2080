@@ -2556,9 +2556,10 @@ static inline int skb_needs_linearize(struct sk_buff *skb,
 				!(features & NETIF_F_SG)));
 }
 
-#ifdef CONFIG_ASF_EGRESS_QOS
+#if defined(CONFIG_ASF_EGRESS_QOS) || defined(CONFIG_ASF_LINUX_QOS)
 /* Linux QoS hook to tranfer all packet to ASF QoS */
-static asf_qos_fn_hook *asf_qos_fn;
+asf_qos_fn_hook *asf_qos_fn;
+EXPORT_SYMBOL(asf_qos_fn);
 
 void asf_qos_fn_register(asf_qos_fn_hook *fn)
 {
@@ -2848,7 +2849,7 @@ int dev_queue_xmit(struct sk_buff *skb)
 
 	skb_update_prio(skb);
 
-#ifdef CONFIG_ASF_EGRESS_QOS
+#if defined(CONFIG_ASF_EGRESS_QOS) || defined(CONFIG_ASF_LINUX_QOS)
 	if (asf_qos_fn) {
 		rc = asf_qos_fn(skb);
 		if (!rc)
