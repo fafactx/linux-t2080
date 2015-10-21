@@ -127,7 +127,11 @@ EXPORT_SYMBOL(devfp_tx_hook);
 #endif
 #endif
 
+#ifdef CONFIG_PREEMPT_RT_FULL
+#define TX_TIMEOUT      (5*HZ)
+#else
 #define TX_TIMEOUT      (1*HZ)
+#endif
 
 const char gfar_driver_version[] = "1.3";
 
