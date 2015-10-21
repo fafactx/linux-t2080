@@ -4445,7 +4445,9 @@ out:
 
 softnet_break:
 	sd->time_squeeze++;
+#ifndef CONFIG_PREEMPT_RT_FULL
 	__raise_softirq_irqoff(NET_RX_SOFTIRQ);
+#endif
 	goto out;
 }
 
