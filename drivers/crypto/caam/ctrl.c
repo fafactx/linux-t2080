@@ -16,6 +16,12 @@
 #include "qi.h"
 #endif
 
+#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+static const bool is_arm = true;
+#else
+static const bool is_arm;
+#endif
+
 /*
  * Descriptor to instantiate RNG State Handle 0 in normal mode and
  * load the JDKEK, TDKEK and TDSK registers
@@ -488,7 +494,7 @@ static int caam_probe(struct platform_device *pdev)
 #ifdef CONFIG_DEBUG_FS
 	struct caam_perfmon *perfmon;
 #endif
-	u32 mcr, scfgr, comp_params;
+	u32 scfgr, comp_params;
 	int pg_size;
 	int BLOCK_OFFSET = 0;
 
@@ -537,11 +543,9 @@ static int caam_probe(struct platform_device *pdev)
 	 * Enable DECO watchdogs and, if this is a PHYS_ADDR_T_64BIT kernel,
 	 * long pointers in master configuration register
 	 */
-	mcr = rd_reg32(&ctrl->mcr);
-	mcr = (mcr & ~MCFGR_AWCACHE_MASK) | (0x2 << MCFGR_AWCACHE_SHIFT) |
-	      MCFGR_WDENABLE | (sizeof(dma_addr_t) == sizeof(u64) ?
-				MCFGR_LONG_PTR : 0);
-	wr_reg32(&ctrl->mcr, mcr);
+	setbits32(&ctrl->mcr, MCFGR_WDENABLE |
+		  (sizeof(dma_addr_t) == sizeof(u64) ? MCFGR_LONG_PTR : 0) |
+		  (is_arm ? 0x2 << MCFGR_AWCACHE_SHIFT : 0));
 
 	/*
 	 *  Read the Compile Time paramters and SCFGR to determine
@@ -820,7 +824,6 @@ static int caam_resume(struct device *dev)
 	struct caam_drv_private *caam_priv;
 	struct caam_ctrl __iomem *ctrl;
 	struct caam_queue_if __iomem *qi;
-	u32 mcr;
 	int ret;
 
 	caam_priv = dev_get_drvdata(dev);
@@ -830,11 +833,9 @@ static int caam_resume(struct device *dev)
 	 * Enable DECO watchdogs and, if this is a PHYS_ADDR_T_64BIT kernel,
 	 * long pointers in master configuration register
 	 */
-	mcr = rd_reg32(&ctrl->mcr);
-	mcr = (mcr & ~MCFGR_AWCACHE_MASK) | (0x2 << MCFGR_AWCACHE_SHIFT) |
-	      MCFGR_WDENABLE | (sizeof(dma_addr_t) == sizeof(u64) ?
-				MCFGR_LONG_PTR : 0);
-	wr_reg32(&ctrl->mcr, mcr);
+	setbits32(&ctrl->mcr, MCFGR_WDENABLE |
+		  (sizeof(dma_addr_t) == sizeof(u64) ? MCFGR_LONG_PTR : 0) |
+		  (is_arm ? 0x2 << MCFGR_AWCACHE_SHIFT : 0));
 
 	/* Enable QI interface of SEC */
 	if (caam_priv->qi_present)
