@@ -736,7 +736,7 @@ static bool tcp_in_window(const struct nf_conn *ct,
 					break;
 				case TCPOPT_TIMESTAMP:
 					state->seen[dir].td_tcptimestamp =
-						ntohl(*((unsigned long *)
+						ntohl(*((unsigned int *)
 							(tcpopt + 2)));
 					goto DONE;
 				default:
