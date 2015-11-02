@@ -1024,6 +1024,94 @@ Status: feature not supported
         }
 
 #if defined(CONFIG_COMPAT)
+        case FM_PCD_IOC_KG_SCHEME_GET_CNTR_COMPAT:
+#endif
+        case FM_PCD_IOC_KG_SCHEME_GET_CNTR:
+        {
+            ioc_fm_pcd_kg_scheme_spc_t *param;
+
+            param = (ioc_fm_pcd_kg_scheme_spc_t *) XX_Malloc(sizeof(ioc_fm_pcd_kg_scheme_spc_t));
+            if (!param)
+                RETURN_ERROR(MINOR, E_NO_MEMORY, ("IOCTL FM PCD"));
+
+            memset(param, 0, sizeof(ioc_fm_pcd_kg_scheme_spc_t));
+
+#if defined(CONFIG_COMPAT)
+            if (compat)
+            {
+                ioc_compat_fm_pcd_kg_scheme_spc_t *compat_param = NULL;
+
+                compat_param = (ioc_compat_fm_pcd_kg_scheme_spc_t *) XX_Malloc(
+                        sizeof(ioc_compat_fm_pcd_kg_scheme_spc_t));
+                if (!compat_param)
+                {
+                    XX_Free(param);
+                    RETURN_ERROR(MINOR, E_NO_MEMORY, ("IOCTL FM PCD"));
+                }
+
+                memset(compat_param, 0, sizeof(ioc_compat_fm_pcd_kg_scheme_spc_t));
+
+                if (copy_from_user(compat_param, (ioc_compat_fm_pcd_kg_scheme_spc_t *) compat_ptr(arg),
+                            sizeof(ioc_compat_fm_pcd_kg_scheme_spc_t)))
+                {
+                    XX_Free(compat_param);
+                    XX_Free(param);
+                    RETURN_ERROR(MINOR, E_WRITE_FAILED, NO_MSG);
+                }
+
+                compat_copy_fm_pcd_kg_scheme_spc(compat_param, param, COMPAT_US_TO_K);
+
+                XX_Free(compat_param);
+            }
+            else
+#endif
+            {
+                if (copy_from_user(param, (ioc_fm_pcd_kg_scheme_spc_t *)arg,
+                            sizeof(ioc_fm_pcd_kg_scheme_spc_t)))
+                {
+                    XX_Free(param);
+                    RETURN_ERROR(MINOR, E_WRITE_FAILED, NO_MSG);
+                }
+            }
+
+            param->val = FM_PCD_KgSchemeGetCounter((t_Handle)param->id);
+
+#if defined(CONFIG_COMPAT)
+            if (compat)
+            {
+                ioc_compat_fm_pcd_kg_scheme_spc_t *compat_param;
+
+                compat_param = (ioc_compat_fm_pcd_kg_scheme_spc_t *) XX_Malloc(
+                        sizeof(ioc_compat_fm_pcd_kg_scheme_spc_t));
+                if (!compat_param)
+                {
+                    XX_Free(param);
+                    RETURN_ERROR(MINOR, E_NO_MEMORY, ("IOCTL FM PCD"));
+                }
+
+                memset(compat_param, 0, sizeof(ioc_compat_fm_pcd_kg_scheme_spc_t));
+                compat_copy_fm_pcd_kg_scheme_spc(compat_param, param, COMPAT_K_TO_US);
+                if (copy_to_user((ioc_compat_fm_pcd_kg_scheme_spc_t *)compat_ptr(arg),
+                            compat_param,
+                            sizeof(ioc_compat_fm_pcd_kg_scheme_spc_t)))
+                    err = E_READ_FAILED;
+
+                XX_Free(compat_param);
+            }
+            else
+#endif
+            {
+                if (copy_to_user((ioc_fm_pcd_kg_scheme_spc_t *)arg,
+                            param,
+                            sizeof(ioc_fm_pcd_kg_scheme_spc_t)))
+                    err = E_READ_FAILED;
+            }
+
+            XX_Free(param);
+            break;
+        }
+
+#if defined(CONFIG_COMPAT)
         case FM_PCD_IOC_KG_SCHEME_DELETE_COMPAT:
 #endif
         case FM_PCD_IOC_KG_SCHEME_DELETE:

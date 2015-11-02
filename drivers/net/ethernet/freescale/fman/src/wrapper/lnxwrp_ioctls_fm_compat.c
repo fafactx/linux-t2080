@@ -735,6 +735,22 @@ void compat_copy_fm_pcd_kg_scheme(
     _fm_cpt_dbg(compat," ...->}\n");
 }
 
+void compat_copy_fm_pcd_kg_scheme_spc(
+        ioc_compat_fm_pcd_kg_scheme_spc_t *compat_param,
+        ioc_fm_pcd_kg_scheme_spc_t *param,
+        uint8_t compat)
+{
+    if (compat == COMPAT_US_TO_K)
+    {
+        param->id = compat_pcd_id2ptr(compat_param->id);
+        param->val = compat_param->val;
+    } else {
+        compat_param->id = compat_pcd_ptr2id(param->id);
+        compat_param->val = param->val;
+    }
+}
+
+
 void compat_copy_fm_pcd_kg_scheme_select(
         ioc_compat_fm_pcd_kg_scheme_select_t *compat_param,
         ioc_fm_pcd_kg_scheme_select_t *param,

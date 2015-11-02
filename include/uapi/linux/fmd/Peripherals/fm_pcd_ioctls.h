@@ -375,6 +375,23 @@ typedef struct ioc_fm_pcd_kg_dflt_value_params_t {
 *//***************************************************************************/
 #define FM_PCD_IOC_GET_COUNTER  _IOWR(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(9), ioc_fm_pcd_counters_params_t)
 
+/**************************************************************************//**
+
+ @Function      FM_PCD_KgSchemeGetCounter
+
+ @Description   Reads scheme packet counter.
+
+ @Param[in]     h_Scheme        scheme handle as returned by FM_PCD_KgSchemeSet().
+
+ @Return        Counter's current value.
+
+ @Cautions      Allowed only following FM_PCD_Init() & FM_PCD_KgSchemeSet().
+*//***************************************************************************/
+#if defined(CONFIG_COMPAT)
+#define FM_PCD_IOC_KG_SCHEME_GET_CNTR_COMPAT  _IOR(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(4), ioc_compat_fm_pcd_kg_scheme_spc_t)
+#endif
+#define FM_PCD_IOC_KG_SCHEME_GET_CNTR  _IOR(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(4), ioc_fm_pcd_kg_scheme_spc_t)
+
 #if 0
 TODO: unused IOCTL
 /**************************************************************************//**
@@ -1125,6 +1142,15 @@ typedef struct ioc_fm_pcd_kg_scheme_counter_t {
     uint32_t    value;      /**< If update=TRUE, this value will be written into the
                                  counter; clear this field to reset the counter. */
 } ioc_fm_pcd_kg_scheme_counter_t;
+
+
+/**************************************************************************//**
+ @Description   A structure for retrieving FMKG_SE_SPC
+*//***************************************************************************/
+typedef struct ioc_fm_pcd_kg_scheme_spc_t {
+    uint32_t    val;       /**< return value */
+    void        *id;       /**< scheme handle */
+} ioc_fm_pcd_kg_scheme_spc_t;
 
 /**************************************************************************//**
  @Description   A structure for defining policer profile parameters as required by keygen
