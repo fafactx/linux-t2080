@@ -3397,7 +3397,7 @@ int qman_ceetm_sp_release(struct qm_ceetm_sp *sp)
 {
 	struct qm_ceetm_sp *p;
 
-	if (sp->lni->is_claimed == 1) {
+	if (sp->lni && sp->lni->is_claimed == 1) {
 		pr_err("The dependency of sub-portal has not been released!\n");
 		return -EBUSY;
 	}
