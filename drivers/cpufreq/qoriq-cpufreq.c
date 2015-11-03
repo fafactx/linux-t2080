@@ -525,7 +525,7 @@ static int __init qoriq_cpufreq_init(void)
 
 	ret = cpufreq_register_driver(&qoriq_cpufreq_driver);
 	if (!ret)
-		pr_info("Freescale PowerPC qoriq CPU frequency scaling driver\n");
+		pr_info("Freescale QorIQ CPU frequency scaling driver\n");
 
 	return ret;
 }
@@ -539,4 +539,4 @@ module_exit(qoriq_cpufreq_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tang Yuantian <Yuantian.Tang@freescale.com>");
-MODULE_DESCRIPTION("cpufreq driver for Freescale e500mc series SoCs");
+MODULE_DESCRIPTION("cpufreq driver for Freescale QorIQ series SoCs");
