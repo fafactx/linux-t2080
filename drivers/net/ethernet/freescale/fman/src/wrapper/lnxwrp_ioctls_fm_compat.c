@@ -518,6 +518,7 @@ void compat_copy_fm_pcd_hash_table(
         param->hash_res_mask    = compat_param->hash_res_mask;
         param->hash_shift       = compat_param->hash_shift;
         param->match_key_size   = compat_param->match_key_size;
+        param->aging_support    = compat_param->aging_support;
         param->id               = compat_pcd_id2ptr(compat_param->id);
     }
     else
@@ -528,6 +529,7 @@ void compat_copy_fm_pcd_hash_table(
         compat_param->hash_res_mask    = param->hash_res_mask;
         compat_param->hash_shift       = param->hash_shift;
         compat_param->match_key_size   = param->match_key_size;
+        compat_param->aging_support    = param->aging_support;
 
         compat_param->id = compat_add_ptr2id(param->id, FM_MAP_TYPE_PCD_NODE);
     }
