@@ -3397,7 +3397,7 @@ int qman_ceetm_sp_release(struct qm_ceetm_sp *sp)
 {
 	struct qm_ceetm_sp *p;
 
-	if (sp->lni->is_claimed == 1) {
+	if (sp->lni && sp->lni->is_claimed == 1) {
 		pr_err("The dependency of sub-portal has not been released!\n");
 		return -EBUSY;
 	}
@@ -4456,7 +4456,9 @@ int qman_ceetm_cq_claim(struct qm_ceetm_cq **cq,
 		if (qman_ceetm_configure_cq(&cq_config)) {
 			pr_err("Can't configure the CQ#%d with CCGRID#%d\n",
 						 idx, ccg->idx);
-		return -EINVAL;
+			list_del(&p->node);
+			kfree(p);
+			return -EINVAL;
 		}
 	}
 
@@ -4503,6 +4505,8 @@ int qman_ceetm_cq_claim_A(struct qm_ceetm_cq **cq,
 		if (qman_ceetm_configure_cq(&cq_config)) {
 			pr_err("Can't configure the CQ#%d with CCGRID#%d\n",
 						 idx, ccg->idx);
+			list_del(&p->node);
+			kfree(p);
 			return -EINVAL;
 		}
 	}
@@ -4549,6 +4553,8 @@ int qman_ceetm_cq_claim_B(struct qm_ceetm_cq **cq,
 		if (qman_ceetm_configure_cq(&cq_config)) {
 			pr_err("Can't configure the CQ#%d with CCGRID#%d\n",
 					 idx, ccg->idx);
+			list_del(&p->node);
+			kfree(p);
 		return -EINVAL;
 		}
 	}
@@ -4814,6 +4820,8 @@ int qman_ceetm_lfq_claim(struct qm_ceetm_lfq **lfq,
 	if (qman_ceetm_configure_lfqmt(&lfqmt_config)) {
 		pr_err("Can't configure LFQMT for LFQID#%d @ CQ#%d\n",
 				lfqid, cq->idx);
+		list_del(&p->node);
+		kfree(p);
 		return -EINVAL;
 	}
 	*lfq = p;
