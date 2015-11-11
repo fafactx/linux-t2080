@@ -1083,6 +1083,30 @@ void compat_fm_pcd_manip_set_node(
     }
 }
 
+void compat_copy_fm_pcd_manip_get_stats(
+	ioc_compat_fm_pcd_manip_get_stats_t *compat_param,
+	ioc_fm_pcd_manip_get_stats_t *param,
+	uint8_t compat)
+{
+	_fm_cpt_dbg (compat, " {->...\n");
+
+	if (compat == COMPAT_US_TO_K)
+	{
+		param->id = compat_pcd_id2ptr(compat_param->id);
+		memcpy(&param->stats, &compat_param->stats,
+					sizeof(ioc_fm_pcd_manip_stats_t));
+	}
+	else
+	{
+		compat_param->id = compat_add_ptr2id(param->id,
+                                FM_MAP_TYPE_PCD_NODE);
+		memcpy(&compat_param->stats, &param->stats,
+					sizeof(ioc_fm_pcd_manip_stats_t));
+	}
+
+	_fm_cpt_dbg (compat, " ...->}\n");
+}
+
 #if (DPAA_VERSION >= 11)
 void compat_copy_fm_pcd_frm_replic_group_params(
 	ioc_compat_fm_pcd_frm_replic_group_params_t *compat_param,

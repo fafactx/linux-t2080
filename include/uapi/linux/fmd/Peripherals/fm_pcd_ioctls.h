@@ -2305,6 +2305,14 @@ typedef struct ioc_fm_pcd_manip_stats_t {
     } u;
 } ioc_fm_pcd_manip_stats_t;
 
+/**************************************************************************//**
+ @Description   Parameters for acquiring manipulation statistics
+*//***************************************************************************/
+typedef struct ioc_fm_pcd_manip_get_stats_t {
+	void				*id;
+	ioc_fm_pcd_manip_stats_t	stats;
+} ioc_fm_pcd_manip_get_stats_t;
+
 #if DPAA_VERSION >= 11
 /**************************************************************************//**
  @Description   Parameters for defining frame replicator group and its members
@@ -2869,6 +2877,23 @@ typedef struct ioc_fm_pcd_cc_tbl_get_stats_t {
 #define FM_PCD_IOC_MANIP_NODE_DELETE_COMPAT _IOW(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(44), ioc_compat_fm_obj_t)
 #endif
 #define FM_PCD_IOC_MANIP_NODE_DELETE    _IOW(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(44), ioc_fm_obj_t)
+
+/**************************************************************************//**
+ @Function      FM_PCD_ManipGetStatistics
+
+ @Description   Retrieve the manipulation statistics.
+
+ @Param[in]     h_ManipNode         A handle to a manipulation node.
+ @Param[out]    p_FmPcdManipStats   A structure for retrieving the manipulation statistics
+
+ @Return        E_OK on success; Error code otherwise.
+
+ @Cautions      Allowed only following FM_PCD_ManipNodeSet().
+*//***************************************************************************/
+#if defined(CONFIG_COMPAT)
+#define FM_PCD_IOC_MANIP_GET_STATS_COMPAT  _IOWR(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(50), ioc_compat_fm_pcd_manip_get_stats_t)
+#endif
+#define FM_PCD_IOC_MANIP_GET_STATS   _IOWR(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(50), ioc_fm_pcd_manip_get_stats_t)
 
 /**************************************************************************//**
 @Function      FM_PCD_SetAdvancedOffloadSupport
