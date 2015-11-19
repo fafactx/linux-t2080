@@ -326,7 +326,7 @@ typedef struct
     uint8_t             offset;
     uint8_t             prsArrayOffset;
     bool                ctrlFlow;
-    uint8_t             owners;
+    uint16_t            owners;
 
     uint8_t             ccKeySizeAccExtraction;
     uint8_t             sizeOfExtraction;
@@ -361,7 +361,7 @@ typedef struct
 {
     t_FmPcdCcNode       *p_FmPcdCcNode;
     bool                occupied;
-    uint8_t             owners;
+    uint16_t            owners;
     volatile bool       lock;
 } t_FmPcdCcNodeArray;
 
@@ -382,7 +382,7 @@ typedef struct
     t_List              fmPortsLst;
     t_FmPcdLock         *p_Lock;
     uint8_t             numOfEntries;
-    uint8_t             owners;
+    uint16_t            owners;
     t_Handle            h_FmPcdCcSavedManipParams;
     bool                modifiedState;
     uint32_t            requiredAction;

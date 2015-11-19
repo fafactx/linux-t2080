@@ -279,7 +279,7 @@
         }
 /* position regarding Manip SW structure */
 #define MANIP_IS_FIRST(h_Manip)                         (!(((t_FmPcdManip *)h_Manip)->h_PrevManip))
-#define MANIP_IS_CASCADE_NEXT(h_Manip)                  (((t_FmPcdManip *)h_Manip)->cascadedNext)
+#define MANIP_IS_CASCADED(h_Manip)                       (((t_FmPcdManip *)h_Manip)->cascaded)
 #define MANIP_IS_UNIFIED(h_Manip)                       (!(((t_FmPcdManip *)h_Manip)->unifiedPosition == e_MANIP_UNIFIED_NONE))
 #define MANIP_IS_UNIFIED_NON_FIRST(h_Manip)             ((((t_FmPcdManip *)h_Manip)->unifiedPosition == e_MANIP_UNIFIED_MID) || \
                                                          (((t_FmPcdManip *)h_Manip)->unifiedPosition == e_MANIP_UNIFIED_LAST))
@@ -482,6 +482,7 @@ typedef struct{
     bool                    insrt;
     t_Handle                h_NextManip;
     t_Handle                h_PrevManip;
+    e_FmPcdManipType        nextManipType;
     /* HdrManip parameters*/
     uint8_t                 *p_Hmct;
     uint8_t                 *p_Data;
@@ -490,11 +491,11 @@ typedef struct{
     bool                    custom;
     uint16_t                tableSize;
     uint8_t                 dataSize;
-    bool                    cascadedNext;
+    bool                    cascaded;
     e_ManipUnifiedPosition  unifiedPosition;
     /* end HdrManip */
     uint8_t                 *p_Template;
-    uint8_t                 owner;
+    uint16_t                owner;
     uint32_t                updateParams;
     uint32_t                shadowUpdateParams;
     bool                    frag;

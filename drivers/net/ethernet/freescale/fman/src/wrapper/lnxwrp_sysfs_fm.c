@@ -44,6 +44,7 @@
 #endif
 
 #include "../../fman/Peripherals/FM/fm.h"
+#include <linux/delay.h>
 
 
 static int fm_get_counter(void *h_fm, e_FmCounters cnt_e, uint32_t *cnt_val);
@@ -224,6 +225,46 @@ static const struct sysfs_stats_t fm_sysfs_stats[] = {
 	{}
 };
 
+
+static ssize_t show_fm_risc_load(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	t_LnxWrpFmDev *p_wrp_fm_dev = NULL;
+	unsigned long flags;
+	int m =0;
+	int err =0;
+	unsigned n = 0;
+	t_FmCtrlMon     util;
+	uint8_t         i =0 ;
+
+	if (attr == NULL || buf == NULL || dev == NULL)
+		return -EINVAL;
+
+	p_wrp_fm_dev = (t_LnxWrpFmDev *) dev_get_drvdata(dev);
+	if (WARN_ON(p_wrp_fm_dev == NULL))
+		return -EINVAL;
+
+	if (!p_wrp_fm_dev->active || !p_wrp_fm_dev->h_Dev)
+		return -EIO;
+
+	local_irq_save(flags);
+
+	/* Calculate risc load */
+	FM_CtrlMonStart(p_wrp_fm_dev->h_Dev);
+	msleep(1000);
+	FM_CtrlMonStop(p_wrp_fm_dev->h_Dev);
+
+	for (i = 0; i < FM_NUM_OF_CTRL; i++) {
+		err |= FM_CtrlMonGetCounters(p_wrp_fm_dev->h_Dev, i, &util);
+		m = snprintf(&buf[n],PAGE_SIZE,"\tRisc%u: util-%u%%, efficiency-%u%%\n",
+				i, util.percentCnt[0], util.percentCnt[1]);
+		n=m+n;
+	}
+
+	local_irq_restore(flags);
+
+	return n;
+}
 
 /* Fm stats and regs dumps via sysfs */
 static ssize_t show_fm_dma_stats(struct device *dev,
@@ -598,6 +639,7 @@ static ssize_t show_fm_schemes(struct device *dev,
 /* FM */
 static DEVICE_ATTR(enq_total_frame, S_IRUGO, show_fm_stats, NULL);
 static DEVICE_ATTR(deq_total_frame, S_IRUGO, show_fm_stats, NULL);
+static DEVICE_ATTR(fm_risc_load_val, S_IRUGO, show_fm_risc_load, NULL);
 static DEVICE_ATTR(deq_0, S_IRUGO, show_fm_stats, NULL);
 static DEVICE_ATTR(deq_1, S_IRUGO, show_fm_stats, NULL);
 static DEVICE_ATTR(deq_2, S_IRUGO, show_fm_stats, NULL);
@@ -1211,6 +1253,7 @@ int fm_sysfs_create(struct device *dev)
 
 	/* store to remove them when module is disabled */
 	p_wrp_fm_dev->dev_attr_regs = &dev_attr_fm_regs;
+	p_wrp_fm_dev->dev_attr_risc_load = &dev_attr_fm_risc_load_val;
 	p_wrp_fm_dev->dev_fm_fpm_attr_regs = &dev_attr_fm_fpm_regs;
 	p_wrp_fm_dev->dev_fm_kg_attr_regs = &dev_attr_fm_kg_regs;
 	p_wrp_fm_dev->dev_fm_kg_pe_attr_regs = &dev_attr_fm_kg_pe_regs;
@@ -1237,6 +1280,9 @@ int fm_sysfs_create(struct device *dev)
 
 	/* Registers dump entry - in future will be moved to debugfs */
 	if (device_create_file(dev, &dev_attr_fm_regs) != 0)
+		return -EIO;
+
+	if (device_create_file(dev, &dev_attr_fm_risc_load_val) != 0)
 		return -EIO;
 
 	if (device_create_file(dev, &dev_attr_fm_fpm_regs) != 0)

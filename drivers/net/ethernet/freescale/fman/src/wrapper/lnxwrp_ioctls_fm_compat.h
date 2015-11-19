@@ -429,6 +429,13 @@ typedef struct ioc_compat_fm_pcd_manip_hdr_insrt_ip_params_t {
     uint8_t last_pid_offset;     /**< the offset of the last Protocol within
                                  the inserted header */
     uint16_t  id;           /**< 16 bit New IP ID */
+    bool                            dont_frag_overwrite;
+    /**< IPv4 only. DF is overwritten with the hash-result next-to-last byte.
+     * This byte is configured to be overwritten when RPD is set. */
+    uint8_t                         last_dst_offset;
+    /**< IPv6 only. if routing extension exist, user should set the offset of the destination address
+     * in order to calculate UDP checksum pseudo header;
+     * Otherwise set it to '0'. */
     ioc_compat_fm_pcd_manip_hdr_insrt_t insrt; /**< size and data to be inserted. */
 } ioc_compat_fm_pcd_manip_hdr_insrt_ip_params_t;
 #endif /* (DPAA_VERSION >= 11) */

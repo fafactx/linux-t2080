@@ -234,6 +234,7 @@ typedef struct {
     struct class                *fm_class;
     struct device_attribute     *dev_attr_stats;
     struct device_attribute     *dev_attr_regs;
+    struct device_attribute     *dev_attr_risc_load;
 
     struct device_attribute     *dev_pcd_attr_stats;
     struct device_attribute     *dev_plcr_attr_regs;

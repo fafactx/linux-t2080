@@ -844,6 +844,7 @@ static t_Handle BuildNewAd(
         t_FmPcdCcNextEngineParams *p_FmPcdCcNextEngineParams)
 {
     t_FmPcdCcNode *p_FmPcdCcNodeTmp;
+    t_Handle h_OrigAd = NULL;
 
     p_FmPcdCcNodeTmp = (t_FmPcdCcNode*)XX_Malloc(sizeof(t_FmPcdCcNode));
     if (!p_FmPcdCcNodeTmp)
@@ -874,6 +875,7 @@ static t_Handle BuildNewAd(
     {
         if (p_FmPcdCcNextEngineParams->h_Manip)
         {
+            h_OrigAd = p_CcNode->h_Ad;
             if (AllocAndFillAdForContLookupManip(
                     p_FmPcdCcNextEngineParams->params.ccParams.h_CcNode)
                     != E_OK)
@@ -884,7 +886,7 @@ static t_Handle BuildNewAd(
             }
         }
         FillAdOfTypeContLookup(h_Ad, NULL, p_CcNode->h_FmPcd, p_FmPcdCcNodeTmp,
-                               p_FmPcdCcNextEngineParams->h_Manip, NULL);
+                               h_OrigAd ? NULL : p_FmPcdCcNextEngineParams->h_Manip, NULL);
     }
 
 #if (DPAA_VERSION >= 11)
@@ -3573,6 +3575,7 @@ static t_Error UpdatePtrWhichPointOnCrntMdfNode(
     t_FmPcdCcNextEngineParams *p_NextEngineParams = NULL;
     t_CcNodeInformation ccNodeInfo = { 0 };
     t_Handle h_NewAd;
+    t_Handle h_OrigAd = NULL;
 
     /* Building a list of all action descriptors that point to the previous node */
     if (!LIST_IsEmpty(&p_CcNode->ccPrevNodesLst))
@@ -3592,13 +3595,14 @@ static t_Error UpdatePtrWhichPointOnCrntMdfNode(
             RETURN_ERROR(MAJOR, E_NO_MEMORY, NO_MSG);
         IOMemSet32(h_NewAd, 0, FM_PCD_CC_AD_ENTRY_SIZE);
 
+        h_OrigAd = p_CcNode->h_Ad;
         BuildNewAd(h_NewAd, p_FmPcdModifyCcKeyAdditionalParams, p_CcNode,
                    p_NextEngineParams);
 
         ccNodeInfo.h_CcNode = h_NewAd;
         EnqueueNodeInfoToRelevantLst(h_NewLst, &ccNodeInfo, NULL);
 
-        if (p_NextEngineParams->h_Manip)
+        if (p_NextEngineParams->h_Manip && !h_OrigAd)
             FmPcdManipUpdateOwner(p_NextEngineParams->h_Manip, FALSE);
     }
     return E_OK;

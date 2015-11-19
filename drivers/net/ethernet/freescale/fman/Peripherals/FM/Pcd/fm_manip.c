@@ -1017,6 +1017,7 @@ static t_Error BuildHmct(t_FmPcdManip *p_Manip,
     /* If this node has a nextManip, and no parsing is required, the old table must be copied to the new table
        the old table and should be freed */
     if (p_FmPcdManipParams->h_NextManip &&
+        (p_Manip->nextManipType == e_FM_PCD_MANIP_HDR) &&
         (MANIP_DONT_REPARSE(p_Manip)))
     {
         if (new)
@@ -1028,14 +1029,6 @@ static t_Error BuildHmct(t_FmPcdManip *p_Manip,
 
             p_Manip->unifiedPosition = e_MANIP_UNIFIED_FIRST;
 
-            /* The HMTD of the next Manip is never going to be used */
-            if (((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->muramAllocate)
-                FM_MURAM_FreeMem(
-                        ((t_FmPcd *)((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_FmPcd)->h_FmMuram,
-                        ((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad);
-            else
-                XX_Free(((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad);
-            ((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad = NULL;
         }
     }
     else
@@ -1058,15 +1051,23 @@ static t_Error CreateManipActionNew(t_FmPcdManip *p_Manip,
     uint8_t *p_OldHmct, *p_TmpHmctPtr, *p_TmpDataPtr;
 
     /* set Manip structure */
-    if (p_FmPcdManipParams->h_NextManip)
-    {
-        if (p_FmPcdManipParams->u.hdr.dontParseAfterManip)
-            nextSize = (uint32_t)(GetHmctSize(p_FmPcdManipParams->h_NextManip) + GetDataSize(p_FmPcdManipParams->h_NextManip));
-        else
-            p_Manip->cascadedNext = TRUE;
-    }
+
     p_Manip->dontParseAfterManip =
             p_FmPcdManipParams->u.hdr.dontParseAfterManip;
+
+    if (p_FmPcdManipParams->h_NextManip)
+    {   /* Next Header manipulation exists */
+        p_Manip->nextManipType = MANIP_GET_TYPE(p_FmPcdManipParams->h_NextManip);
+
+        if ((p_Manip->nextManipType == e_FM_PCD_MANIP_HDR) && p_Manip->dontParseAfterManip)
+            nextSize = (uint32_t)(GetHmctSize(p_FmPcdManipParams->h_NextManip) + GetDataSize(p_FmPcdManipParams->h_NextManip));
+        else /* either parsing is required or next manip is Frag; no table merging. */
+            p_Manip->cascaded = TRUE;
+        /* pass up the "cascaded" attribute. The whole chain is cascaded
+         * if something is cascaded along the way. */
+        if (MANIP_IS_CASCADED(p_FmPcdManipParams->h_NextManip))
+            p_Manip->cascaded = TRUE;
+    }
 
     /* Allocate new table */
     /* calculate table size according to manip parameters */
@@ -1105,9 +1106,9 @@ static t_Error CreateManipActionNew(t_FmPcdManip *p_Manip,
                      ("MURAM allocation for HdrManip node shadow"));
     }
 
-
-    if (p_FmPcdManipParams->h_NextManip &&
-        (MANIP_DONT_REPARSE(p_Manip)))
+    if (p_FmPcdManipParams->h_NextManip
+            && (p_Manip->nextManipType == e_FM_PCD_MANIP_HDR)
+            && (MANIP_DONT_REPARSE(p_Manip)))
     {
         p_OldHmct = (uint8_t *)GetManipInfo(p_FmPcdManipParams->h_NextManip,
                                             e_MANIP_HMCT);
@@ -1157,18 +1158,28 @@ static t_Error CreateManipActionNew(t_FmPcdManip *p_Manip,
 
     /* Build HMTD (table descriptor) */
     tmpReg = HMTD_CFG_TYPE; /* NADEN = 0 */
+
     /* add parseAfterManip */
     if (!p_Manip->dontParseAfterManip)
         tmpReg |= HMTD_CFG_PRS_AFTER_HM;
     /* create cascade */
-    if (p_FmPcdManipParams->h_NextManip &&
-        !MANIP_DONT_REPARSE(p_Manip))
+    /*if (p_FmPcdManipParams->h_NextManip
+            && (!MANIP_DONT_REPARSE(p_Manip) || (p_Manip->nextManipType != e_FM_PCD_MANIP_HDR)))*/
+    if (p_Manip->cascaded)
     {
+        uint16_t nextAd;
         /* indicate that there's another HM table descriptor */
         tmpReg |= HMTD_CFG_NEXT_AD_EN;
-        WRITE_UINT16(
-                ((t_Hmtd *)p_Manip->h_Ad)->nextAdIdx,
-                (uint16_t)((uint32_t)(XX_VirtToPhys(MANIP_GET_HMTD_PTR(p_FmPcdManipParams->h_NextManip)) - (((t_FmPcd*)p_Manip->h_FmPcd)->physicalMuramBase)) >> 4));
+        /* get address of next HMTD (table descriptor; h_Ad).
+         * If the next HMTD was removed due to table unifing, get the address
+         * of the "next next" as written in the h_Ad of the next h_Manip node.
+         */
+        if (p_Manip->unifiedPosition != e_MANIP_UNIFIED_FIRST)
+            nextAd = (uint16_t)((uint32_t)(XX_VirtToPhys(MANIP_GET_HMTD_PTR(p_FmPcdManipParams->h_NextManip)) - (((t_FmPcd*)p_Manip->h_FmPcd)->physicalMuramBase)) >> 4);
+        else
+            nextAd = ((t_Hmtd *)((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad)->nextAdIdx;
+
+        WRITE_UINT16(((t_Hmtd *)p_Manip->h_Ad)->nextAdIdx, nextAd);
     }
 
     WRITE_UINT16(((t_Hmtd *)p_Manip->h_Ad)->cfg, tmpReg);
@@ -1177,6 +1188,19 @@ static t_Error CreateManipActionNew(t_FmPcdManip *p_Manip,
             (uint32_t)(XX_VirtToPhys(p_Manip->p_Hmct) - (((t_FmPcd*)p_Manip->h_FmPcd)->physicalMuramBase)));
 
     WRITE_UINT8(((t_Hmtd *)p_Manip->h_Ad)->opCode, HMAN_OC);
+
+    if (p_Manip->unifiedPosition == e_MANIP_UNIFIED_FIRST)
+    {
+        /* The HMTD of the next Manip is never going to be used */
+        if (((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->muramAllocate)
+            FM_MURAM_FreeMem(
+                    ((t_FmPcd *)((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_FmPcd)->h_FmMuram,
+                    ((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad);
+        else
+            XX_Free(((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad);
+        ((t_FmPcdManip *)p_FmPcdManipParams->h_NextManip)->h_Ad = NULL;
+    }
+
 
     return E_OK;
 }
@@ -2606,12 +2630,11 @@ static t_Error CheckManipParamsAndSetType(t_FmPcdManip *p_Manip,
                     RETURN_ERROR(
                             MAJOR, E_INVALID_STATE,
                             ("h_NextManip is already a part of another chain"));
-                if (MANIP_GET_TYPE(p_ManipParams->h_NextManip)
-                        != e_FM_PCD_MANIP_HDR)
-                    RETURN_ERROR(
-                            MAJOR,
-                            E_NOT_SUPPORTED,
-                            ("For a Header Manipulation node - no support of h_NextManip of type other than Header Manipulation."));
+                if ((MANIP_GET_TYPE(p_ManipParams->h_NextManip)
+                        != e_FM_PCD_MANIP_HDR) &&
+                        (MANIP_GET_TYPE(p_ManipParams->h_NextManip)
+                        != e_FM_PCD_MANIP_FRAG))
+                    RETURN_ERROR(MAJOR, E_NOT_SUPPORTED, ("For a Header Manipulation node - no support of h_NextManip of type other than Header Manipulation or Fragmentation."));
             }
 
             if (p_ManipParams->u.hdr.rmv)
@@ -4673,8 +4696,8 @@ t_Error FmPcdManipCheckParamsForCcNextEngine(
                 p_Manip->ownerTmp++;
                 break;
             case (HMAN_OC):
-                if ((p_FmPcdCcNextEngineParams->nextEngine == e_FM_PCD_CC)
-                        && MANIP_IS_CASCADE_NEXT(p_Manip))
+                if (( p_FmPcdCcNextEngineParams->nextEngine == e_FM_PCD_CC)
+                        && MANIP_IS_CASCADED(p_Manip))
                     RETURN_ERROR(
                             MINOR,
                             E_INVALID_STATE,
@@ -5262,7 +5285,7 @@ t_Error FM_PCD_ManipNodeReplace(t_Handle h_Manip,
      * (1) If this is an independent node, all its owners should be updated.
      *
      * (2) If it is the head of a cascaded chain (it does not have a "prev" but
-     * it has a "next" and it has a "cascaded-next" indication), the next
+     * it has a "next" and it has a "cascaded" indication), the next
      * node remains unchanged, and the behavior is as in (1).
      *
      * (3) If it is not the head, but a part of a cascaded chain, in can be
