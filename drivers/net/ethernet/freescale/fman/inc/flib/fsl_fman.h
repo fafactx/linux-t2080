@@ -672,7 +672,6 @@ enum fman_counters {
 
 #define QMI_GS_HALT_NOT_BUSY            0x00000002
 
-
 /**************************************************************************//**
  @Description       IRAM defines
 *//***************************************************************************/
@@ -753,8 +752,9 @@ void fman_set_dma_emergency(struct fman_dma_regs *dma_rg, bool is_write,
 				bool enable);
 void fman_set_dma_ext_bus_pri(struct fman_dma_regs *dma_rg, uint32_t pri);
 void fman_set_congestion_group_pfc_priority(uint32_t *cpg_rg,
-			    	                        uint32_t congestion_group_id,
-				                            uint8_t priority_bit_map);
+                                            uint32_t congestion_group_id,
+                                            uint8_t piority_bit_map,
+                                            uint32_t reg_num);
 
 
 void fman_defconfig(struct fman_cfg *cfg, bool is_master);

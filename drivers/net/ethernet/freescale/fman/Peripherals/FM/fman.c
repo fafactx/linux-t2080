@@ -565,18 +565,18 @@ void fman_set_vsp_window(struct fman_bmi_regs *bmi_rg,
 }
 
 void fman_set_congestion_group_pfc_priority(uint32_t *cpg_rg,
-			    	                        uint32_t congestion_group_id,
-				                            uint8_t priority_bit_map)
+                                            uint32_t congestion_group_id,
+                                            uint8_t priority_bit_map,
+                                            uint32_t reg_num)
 {
-	uint32_t reg_num, offset, tmp = 0;
- 
-    reg_num = (FM_PORT_NUM_OF_CONGESTION_GRPS-1-congestion_group_id)/4;
+	uint32_t offset, tmp = 0;
+
     offset  = (congestion_group_id%4)*8;
 
     tmp = ioread32be(&cpg_rg[reg_num]);
     tmp &= ~(0xFF<<offset);
     tmp |= (uint32_t)priority_bit_map << offset;
- 
+
     iowrite32be(tmp,&cpg_rg[reg_num]);
 }
 
@@ -823,7 +823,6 @@ int fman_fpm_init(struct fman_fpm_regs *fpm_rg, struct fman_cfg *cfg)
 	/* RAM ECC -  enable and clear events*/
 	/* first we need to clear all parser memory,
 	 * as it is uninitialized and may cause ECC errors */
-
 	/* event bits */
 	tmp_reg = (FPM_RAM_MURAM_ECC | FPM_RAM_IRAM_ECC);
 	/* Rams enable not effected by RCR bit, but by a COP configuration */

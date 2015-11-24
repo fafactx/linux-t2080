@@ -160,6 +160,9 @@
 #define FM_PCD_MANIP_IPSEC_IP_HDR_LEN_MASK                  0x00FF0000
 #define FM_PCD_MANIP_IPSEC_IP_HDR_LEN_SHIFT                 16
 
+#define FM_PCD_MANIP_IPSEC_ARW_SIZE_MASK                    0xFFFF0000
+#define FM_PCD_MANIP_IPSEC_ARW_SIZE_SHIFT                   16
+
 #define e_FM_MANIP_IP_INDX                                  1
 
 #define HMCD_OPCODE_GENERIC_RMV                 0x01
@@ -178,6 +181,7 @@
 #define HMCD_OPCODE_IP_INSRT                    0x17
 #define HMCD_OPCODE_CAPWAP_RMV                  0x18
 #define HMCD_OPCODE_CAPWAP_INSRT                0x18
+#define HMCD_OPCODE_GEN_FIELD_REPLACE           0x19
 
 #define HMCD_LAST                               0x00800000
 
@@ -198,6 +202,7 @@
 #define HMCD_IP_LAST_PID_MASK                   0x000000FF
 #define HMCD_IP_OR_QOS                          0x00010000
 #define HMCD_IP_L4_CS_CALC                      0x00040000
+#define HMCD_IP_DF_MODE                         0x00400000
 
 
 #define HMCD_OC_SHIFT                           24
@@ -251,6 +256,14 @@
 #define HMCD_IP_REPLACE_ID                      0x00400000
 
 #define HMCD_IP_REPLACE_L3HDRSIZE_SHIFT         24
+
+#define HMCD_GEN_FIELD_SIZE_SHIFT               16
+#define HMCD_GEN_FIELD_SRC_OFF_SHIFT            8
+#define HMCD_GEN_FIELD_DST_OFF_SHIFT            0
+#define HMCD_GEN_FIELD_MASK_EN                  0x00400000
+
+#define HMCD_GEN_FIELD_MASK_OFF_SHIFT           16
+#define HMCD_GEN_FIELD_MASK_SHIFT               24
 
 #define DSCP_TO_VLAN_TABLE_SIZE                    32
 

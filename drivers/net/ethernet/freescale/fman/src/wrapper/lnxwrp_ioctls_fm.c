@@ -126,10 +126,6 @@
 #error Error: please synchronize IOC_ defines!
 #endif
 
-#if CMP_IOC_DEFINE(FM_PCD_PRS_SW_OFFSET)
-#error Error: please synchronize IOC_ defines!
-#endif
-
 #if CMP_IOC_DEFINE(FM_PCD_MAX_MANIP_INSRT_TEMPLATE_SIZE)
 #error Error: please synchronize IOC_ defines!
 #endif

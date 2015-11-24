@@ -1288,6 +1288,7 @@ t_Error FmSetCongestionGroupPFCpriority(t_Handle    h_Fm,
                                         uint8_t     priorityBitMap)
 {
     t_Fm    *p_Fm  = (t_Fm *)h_Fm;
+    uint32_t regNum;
 
     ASSERT_COND(h_Fm);
 
@@ -1299,9 +1300,11 @@ t_Error FmSetCongestionGroupPFCpriority(t_Handle    h_Fm,
     if (p_Fm->guestId == NCSW_MASTER_ID)
     {
         ASSERT_COND(p_Fm->baseAddr);
+        regNum = (FM_PORT_NUM_OF_CONGESTION_GRPS - 1 - congestionGroupId) / 4;
         fman_set_congestion_group_pfc_priority((uint32_t *)((p_Fm->baseAddr+FM_MM_CGP)),
                                                congestionGroupId,
-                                               priorityBitMap);
+                                               priorityBitMap,
+                                               regNum);
     }
     else if (p_Fm->h_IpcSessions[0])
     {
@@ -2498,10 +2501,15 @@ uint32_t FmGetTimeStampScale(t_Handle h_Fm)
                                      &replyLength,
                                      NULL,
                                      NULL)) != E_OK)
-            RETURN_ERROR(MAJOR, err, NO_MSG);
-
+        {
+            REPORT_ERROR(MAJOR, err, NO_MSG);
+            return 0;
+        }
         if (replyLength != (sizeof(uint32_t) + sizeof(uint32_t)))
-            RETURN_ERROR(MAJOR, E_INVALID_VALUE, ("IPC reply length mismatch"));
+        {
+            REPORT_ERROR(MAJOR, E_INVALID_VALUE, ("IPC reply length mismatch"));
+            return 0;
+        }
 
         memcpy((uint8_t*)&timeStamp, reply.replyBody, sizeof(uint32_t));
         return timeStamp;
@@ -2510,7 +2518,10 @@ uint32_t FmGetTimeStampScale(t_Handle h_Fm)
              p_Fm->baseAddr)
     {
         if (!(GET_UINT32(p_Fm->p_FmFpmRegs->fmfp_tsc1) & FPM_TS_CTL_EN))
-             RETURN_ERROR(MAJOR, E_INVALID_STATE, ("timestamp is not enabled!"));
+        {
+            REPORT_ERROR(MAJOR, E_INVALID_STATE, ("timestamp is not enabled!"));
+            return 0;
+        }
     }
     else if (p_Fm->guestId != NCSW_MASTER_ID)
         DBG(WARNING, ("No IPC - can't validate FM if timestamp enabled."));
@@ -2632,7 +2643,6 @@ t_Error FmSetSizeOfFifo(t_Handle    h_Fm,
             p_Fm->p_FmStateStruct->extraFifoPoolSize = FM_MAX_NUM_OF_RX_PORTS*BMI_FIFO_UNITS;
 
         p_Fm->p_FmStateStruct->extraFifoPoolSize = MAX(p_Fm->p_FmStateStruct->extraFifoPoolSize, extraSizeOfFifo);
-
     }
 
     /* check that there are enough uncommitted fifo size */
@@ -2706,7 +2716,6 @@ t_Error FmSetNumOfTasks(t_Handle    h_Fm,
              p_Fm->baseAddr)
     {
         DBG(WARNING, ("No IPC - can't validate FM total-num-of-tasks."));
-
         fman_set_num_of_tasks(bmi_rg, hardwarePortId, numOfTasks, numOfExtraTasks);
     }
     else if (p_Fm->guestId != NCSW_MASTER_ID)
@@ -2792,7 +2801,6 @@ t_Error FmSetNumOfOpenDmas(t_Handle h_Fm,
 #ifdef FM_HAS_TOTAL_DMAS
     else if (p_Fm->guestId != NCSW_MASTER_ID)
         RETURN_ERROR(MAJOR, E_NOT_SUPPORTED, ("running in guest-mode without IPC!"));
-
 #else
     else if ((p_Fm->guestId != NCSW_MASTER_ID) &&
              p_Fm->baseAddr &&
@@ -3484,7 +3492,6 @@ t_Error FM_Init(t_Handle h_Fm)
         p_Fm->p_FmStateStruct->totalFifoSize = DEFAULT_totalFifoSize(p_Fm->p_FmStateStruct->revInfo.majorRev,
                                                                      p_Fm->p_FmStateStruct->revInfo.minorRev);
 
-
     CHECK_INIT_PARAMETERS(p_Fm, CheckFmParameters);
 
     p_FmDriverParam = p_Fm->p_FmDriverParam;
@@ -3724,7 +3731,7 @@ t_Error FM_Free(t_Handle h_Fm)
         }
 #endif /* (DPAA_VERSION >= 11) */
 
-        if (p_Fm->fmModuleName)
+        if (p_Fm->fmModuleName[0] != 0)
             XX_IpcUnregisterMsgHandler(p_Fm->fmModuleName);
 
         if (!p_Fm->recoveryMode)
@@ -4950,11 +4957,9 @@ t_Error FM_GetSpecialOperationCoding(t_Handle               h_Fm,
         DBG(WARNING, ("FM in guest-mode without IPC, can't validate firmware revision."));
         revInfo.packageRev = IP_OFFLOAD_PACKAGE_NUMBER;
     }
-    else if (revInfo.packageRev != IP_OFFLOAD_PACKAGE_NUMBER)
+    else if (!IS_OFFLOAD_PACKAGE(revInfo.packageRev))
         RETURN_ERROR(MINOR, E_NOT_SUPPORTED, ("Fman ctrl code package"));
 
-    if (revInfo.packageRev == IP_OFFLOAD_PACKAGE_NUMBER)
-    {
     switch (spOper)
     {
         case (FM_SP_OP_CAPWAP_DTLS_DEC):
@@ -4977,6 +4982,9 @@ t_Error FM_GetSpecialOperationCoding(t_Handle               h_Fm,
         case (FM_SP_OP_IPSEC|FM_SP_OP_IPSEC_UPDATE_UDP_LEN):
                 *p_SpOperCoding = 1;
                 break;
+        case (FM_SP_OP_IPSEC|FM_SP_OP_IPSEC_UPDATE_UDP_LEN|FM_SP_OP_IPSEC_NO_ETH_HDR):
+                *p_SpOperCoding = 12;
+                break;
         case (FM_SP_OP_IPSEC|FM_SP_OP_RPD):
                 *p_SpOperCoding = 4;
                 break;
@@ -4992,7 +5000,7 @@ t_Error FM_GetSpecialOperationCoding(t_Handle               h_Fm,
         default:
             RETURN_ERROR(MINOR, E_INVALID_VALUE, NO_MSG);
     }
-    }
+
     return E_OK;
 }
 
@@ -5084,11 +5092,18 @@ t_Error FM_CtrlMonGetCounters(t_Handle h_Fm, uint8_t fmCtrlIndex, t_FmCtrlMon *p
     return E_OK;
 }
 
+t_Handle FM_GetMuramHandle(t_Handle h_Fm)
+{
+    t_Fm        *p_Fm = (t_Fm*)h_Fm;
+
+    SANITY_CHECK_RETURN_VALUE(p_Fm, E_INVALID_HANDLE, NULL);
+
+    return (p_Fm->h_FmMuram);
+}
 
 /****************************************************/
 /*       Hidden-DEBUG Only API                      */
 /****************************************************/
-
 t_Error FM_ForceIntr (t_Handle h_Fm, e_FmExceptions exception)
 {
     t_Fm *p_Fm = (t_Fm*)h_Fm;

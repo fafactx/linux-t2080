@@ -51,8 +51,8 @@
 #define HC_HCOR_OPCODE_CC                                       0x3
 #define HC_HCOR_OPCODE_CC_AGE_MASK                              0x4
 #define HC_HCOR_OPCODE_CC_CAPWAP_REASSM_TIMEOUT                 0x5
-#define HC_HCOR_OPCODE_CC_REASSM_TIMEOUT                     0x10
-#define HC_HCOR_OPCODE_CC_IP_FRAG_INITIALIZATION             0x11
+#define HC_HCOR_OPCODE_CC_REASSM_TIMEOUT                        0x10
+#define HC_HCOR_OPCODE_CC_IP_FRAG_INITIALIZATION                0x11
 #define HC_HCOR_OPCODE_CC_UPDATE_WITH_AGING                     0x13
 #define HC_HCOR_ACTION_REG_REASSM_TIMEOUT_ACTIVE_SHIFT          24
 #define HC_HCOR_EXTRA_REG_REASSM_TIMEOUT_TSBS_SHIFT             24
@@ -283,7 +283,8 @@ t_Handle FmHcConfigAndInit(t_FmHcParams *p_FmHcParams)
         return NULL;
     }
 
-    err = FM_PORT_ConfigMaxFrameLength(p_FmHc->h_HcPortDev, (uint16_t)sizeof(t_HcFrame));
+    err = FM_PORT_ConfigMaxFrameLength(p_FmHc->h_HcPortDev,
+                                       (uint16_t)sizeof(t_HcFrame));
 
     if (err != E_OK)
     {

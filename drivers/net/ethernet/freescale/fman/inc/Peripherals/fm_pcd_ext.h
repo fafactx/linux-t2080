@@ -95,9 +95,8 @@
 #define FM_PCD_KG_NUM_OF_DEFAULT_GROUPS             16                  /**< Number of default value logical groups */
 
 #define FM_PCD_PRS_NUM_OF_LABELS                    32                  /**< Maximum number of SW parser labels */
-#define FM_PCD_SW_PRS_SIZE                          0x00000800          /**< Total size of SW parser area */
-#define FM_PCD_PRS_SW_OFFSET                        0x00000040          /**< Size of illegal addresses at the beginning
-                                                                             of the SW parser area */
+#define FM_SW_PRS_MAX_IMAGE_SIZE                    (FM_PCD_SW_PRS_SIZE /*- FM_PCD_PRS_SW_OFFSET -FM_PCD_PRS_SW_TAIL_SIZE*/-FM_PCD_PRS_SW_PATCHES_SIZE)
+                                                                        /**< Maximum size of SW parser code */
 
 #define FM_PCD_MAX_MANIP_INSRT_TEMPLATE_SIZE        128                 /**< Maximum size of insertion template for
                                                                              insert manipulation */
@@ -1144,7 +1143,7 @@ typedef enum e_FmPcdManipHdrFieldUpdateVlan {
 } e_FmPcdManipHdrFieldUpdateVlan;
 
 /**************************************************************************//**
- @Description   Enumeration type for selecting specific L2 fields removal
+ @Description   Enumeration type for selecting specific L2 header insertion
 *//***************************************************************************/
 typedef enum e_FmPcdManipHdrInsrtSpecificL2 {
     e_FM_PCD_MANIP_HDR_INSRT_MPLS                   /**< Insert MPLS header (Unlimited MPLS labels) */
@@ -2243,7 +2242,7 @@ typedef struct t_FmPcdManipHdrRmvByHdrParams {
                                                              If TRUE, remove also the specified header. */
             t_FmManipHdrInfo            hdrInfo;
         } fromStartByHdr;                               /**< Relevant when type = e_FM_PCD_MANIP_RMV_BY_HDR_FROM_START */
-#endif /* FM_CAPWAP_SUPPORT */
+#endif /* (DPAA_VERSION >= 11) || ... */
 #if (DPAA_VERSION >= 11)
         t_FmManipHdrInfo                hdrInfo;        /**< Relevant when type = e_FM_PCD_MANIP_RMV_BY_HDR_FROM_START */
 #endif /* (DPAA_VERSION >= 11) */
@@ -2356,9 +2355,14 @@ typedef struct t_FmPcdManipSpecialOffloadIPSecParams {
                                                      (direction depends on the 'decryption' field). */
     bool        variableIpHdrLen;               /**< TRUE for supporting variable IP header length in decryption. */
     bool        variableIpVersion;              /**< TRUE for supporting both IP version on the same SA in encryption */
-    uint8_t     outerIPHdrLen;                  /**< if 'variableIpVersion == TRUE' than this field must be set to non-zero value;
+    uint8_t     outerIPHdrLen;                  /**< if 'variableIpVersion == TRUE' then this field must be set to non-zero value;
                                                      It is specifies the length of the outer IP header that was configured in the
                                                      corresponding SA. */
+    uint16_t    arwSize;                        /**< if <> '0' then will perform ARW check for this SA;
+                                                     The value must be a multiplication of 16 */
+    uintptr_t   arwAddr;                        /**< if arwSize <> '0' then this field must be set to non-zero value;
+                                                     MUST be allocated from FMAN's MURAM that the post-sec op-port belongs to;
+                                                     Must be 4B aligned. Required MURAM size is 'NEXT_POWER_OF_2(arwSize+32))/8+4' Bytes */
 } t_FmPcdManipSpecialOffloadIPSecParams;
 
 #if (DPAA_VERSION >= 11)
@@ -3831,8 +3835,6 @@ t_Error FM_PCD_HashTableGetBucketAging(t_Handle h_HashTbl,
                                        bool reset,
                                        uint32_t *p_BucketAgingMask,
                                        uint8_t *agedKeysArray[31]);
-
-
 
 /**************************************************************************//**
  @Function      FM_PCD_ManipNodeSet

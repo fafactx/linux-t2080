@@ -475,13 +475,24 @@ typedef struct ioc_compat_fm_pcd_manip_hdr_params_t {
     bool                                        dont_parse_after_manip;
 } ioc_compat_fm_pcd_manip_hdr_params_t;
 
+typedef struct ioc_compat_fm_pcd_manip_special_offload_params_t {
+    bool    decryption;
+    bool    ecn_copy;
+    bool    dscp_copy;
+    bool    variable_ip_hdr_len;
+    bool    variable_ip_version;
+    uint8_t outer_ip_hdr_len;
+    uint16_t    arw_size;
+    compat_uptr_t   arw_addr;
+} ioc_compat_fm_pcd_manip_special_offload_params_t;
+
 typedef struct ioc_compat_fm_pcd_manip_params_t {
     ioc_fm_pcd_manip_type                         type;
     union {
         ioc_compat_fm_pcd_manip_hdr_params_t      hdr;
         ioc_fm_pcd_manip_reassem_params_t         reassem;
         ioc_fm_pcd_manip_frag_params_t            frag;
-        ioc_fm_pcd_manip_special_offload_params_t special_offload;
+        ioc_compat_fm_pcd_manip_special_offload_params_t special_offload;
     } u;
     compat_uptr_t                                 p_next_manip;
 #if (defined(FM_CAPWAP_SUPPORT) && (DPAA_VERSION == 10))

@@ -238,6 +238,7 @@ typedef uint32_t fmSpecialOperations_t;                 /**< typedef for definin
 #define  FM_SP_OP_CLEAR_RPD                 0x02000000  /**< Clear the RPD bit */
 #define  FM_SP_OP_CAPWAP_DTLS_ENC           0x01000000  /**< activate features that related to CAPWAP-DTLS post Encryption */
 #define  FM_SP_OP_CAPWAP_DTLS_DEC           0x00800000  /**< activate features that related to CAPWAP-DTLS post Decryption */
+#define  FM_SP_OP_IPSEC_NO_ETH_HDR          0x00400000  /**< activate features that related to IPSec without Eth hdr */
 /* @} */
 
 /**************************************************************************//**
@@ -1658,6 +1659,21 @@ t_Error FM_ForceIntr (t_Handle h_Fm, e_FmExceptions exception);
                 (i.e. guestId != NCSW_MASTER_ID)
 *//***************************************************************************/
 t_Error FM_SetPortsBandwidth(t_Handle h_Fm, t_FmPortsBandwidthParams *p_PortsBandwidth);
+
+/**************************************************************************//*
+ @Function      FM_GetMuramHandle
+
+ @Description   Gets the corresponding MURAM handle
+
+ @Param[in]     h_Fm                A handle to an FM Module.
+
+ @Return        MURAM handle; NULL otherwise.
+
+ @Cautions      Allowed only following FM_Init().
+                This routine should NOT be called from guest-partition
+                (i.e. guestId != NCSW_MASTER_ID)
+*//***************************************************************************/
+t_Handle FM_GetMuramHandle(t_Handle h_Fm);
 
 /** @} */ /* end of FM_runtime_control_grp group */
 /** @} */ /* end of FM_lib_grp group */

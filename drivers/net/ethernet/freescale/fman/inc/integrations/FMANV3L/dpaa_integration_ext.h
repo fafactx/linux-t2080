@@ -203,6 +203,8 @@ typedef enum
 #define FM_MAX_NUM_OF_10G_TX_PORTS  FM_MAX_NUM_OF_10G_MACS
 #define FM_MAX_NUM_OF_TX_PORTS      (FM_MAX_NUM_OF_10G_TX_PORTS + FM_MAX_NUM_OF_1G_TX_PORTS)
 
+#define FM_MAX_NUM_OF_MACSECS       1 /* Should be updated */
+
 #define FM_PORT_MAX_NUM_OF_EXT_POOLS            4           /**< Number of external BM pools per Rx port */
 #define FM_PORT_NUM_OF_CONGESTION_GRPS          256         /**< Total number of congestion groups in QM */
 #define FM_MAX_NUM_OF_SUB_PORTALS               16
@@ -221,7 +223,7 @@ typedef enum
 #define FM_PCD_PLCR_NUM_ENTRIES         256                 /**< Total number of policer profiles */
 #define FM_PCD_KG_NUM_OF_SCHEMES        32                  /**< Total number of KG schemes */
 #define FM_PCD_MAX_NUM_OF_CLS_PLANS     256                 /**< Number of classification plan entries. */
-#define FM_PCD_PRS_SW_PATCHES_SIZE      0x00000460          /**< Number of bytes saved for patches */
+#define FM_PCD_PRS_SW_PATCHES_SIZE      0x00000600          /**< Number of bytes saved for patches */
 #define FM_PCD_SW_PRS_SIZE              0x00000800          /**< Total size of SW parser area */
 
 /* RTC defines */

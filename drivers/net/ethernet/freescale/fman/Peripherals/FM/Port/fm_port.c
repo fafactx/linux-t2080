@@ -1076,6 +1076,38 @@ static uint32_t GetPortSchemeBindParams(
     return tmp;
 }
 
+static void FmPortCheckNApplyMacsec(t_Handle h_FmPort)
+{
+    t_FmPort *p_FmPort = (t_FmPort*)h_FmPort;
+    volatile uint32_t *p_BmiCfgReg = NULL;
+    uint32_t macsecEn = BMI_PORT_CFG_EN_MACSEC;
+    uint32_t lcv, walking1Mask = 0x80000000;
+    uint8_t cnt = 0;
+
+    ASSERT_COND(p_FmPort);
+    ASSERT_COND(p_FmPort->h_FmPcd);
+    ASSERT_COND(!p_FmPort->p_FmPortDriverParam);
+
+    if ((p_FmPort->portType != e_FM_PORT_TYPE_RX_10G)
+            && (p_FmPort->portType != e_FM_PORT_TYPE_RX))
+        return;
+
+    p_BmiCfgReg = &p_FmPort->port.bmi_regs->rx.fmbm_rcfg;
+    /* get LCV for MACSEC */
+    if ((lcv = FmPcdGetMacsecLcv(p_FmPort->h_FmPcd, p_FmPort->netEnvId))
+                    != 0)
+    {
+        while (!(lcv & walking1Mask))
+        {
+            cnt++;
+            walking1Mask >>= 1;
+        }
+
+        macsecEn |= (uint32_t)cnt << BMI_PORT_CFG_MS_SEL_SHIFT;
+        WRITE_UINT32(*p_BmiCfgReg, GET_UINT32(*p_BmiCfgReg) | macsecEn);
+    }
+}
+
 static t_Error SetPcd(t_FmPort *p_FmPort, t_FmPortPcdParams *p_PcdParams)
 {
     t_Error err = E_OK;
@@ -1338,7 +1370,7 @@ static t_Error SetPcd(t_FmPort *p_FmPort, t_FmPortPcdParams *p_PcdParams)
         ASSERT_COND(p_PcdParams->p_PrsParams);
 #if (DPAA_VERSION >= 11)
         if (p_PcdParams->p_PrsParams->firstPrsHdr == HEADER_TYPE_CAPWAP)
-            hdrNum = OFFLOAD_CAPWAP_SW_PATCH_LABEL;
+            hdrNum = OFFLOAD_SW_PATCH_CAPWAP_LABEL;
         else
         {
 #endif /* (DPAA_VERSION >= 11) */
@@ -1528,28 +1560,30 @@ static t_Error SetPcd(t_FmPort *p_FmPort, t_FmPortPcdParams *p_PcdParams)
                 RETURN_ERROR(MAJOR, E_INVALID_VALUE, NO_MSG);
         }
 
-        /* Check if ip-reassembly port - need to update NIAs */
+        /* Check if ip-reassembly port - need to link sw-parser code */
         if (p_FmPort->h_IpReassemblyManip)
         {
-            /* link to sw parser code for IP Frag - only if no other code is applied. */
+           /* link to sw parser code for IP Frag - only if no other code is applied. */
             hdrNum = GetPrsHdrNum(HEADER_TYPE_IPv4);
             if (!(tmpHxs[hdrNum] & PRS_HDR_SW_PRS_EN))
-                tmpHxs[hdrNum] |= (PRS_HDR_SW_PRS_EN
-                        | OFFLOAD_SW_PATCH_IPv4_LABEL);
-        }
-
-        if ((p_FmPort->h_IpReassemblyManip)
-                || (FmPcdNetEnvIsHdrExist(p_FmPort->h_FmPcd, p_FmPort->netEnvId,
-                                          HEADER_TYPE_UDP_LITE))
-                || (FmPcdIsAdvancedOffloadSupported(p_FmPort->h_FmPcd)
-                        && (p_FmPort->portType
-                                == e_FM_PORT_TYPE_OH_OFFLINE_PARSING)))
-        {
+                tmpHxs[hdrNum] |= (PRS_HDR_SW_PRS_EN | OFFLOAD_SW_PATCH_IPv4_IPR_LABEL);
             hdrNum = GetPrsHdrNum(HEADER_TYPE_IPv6);
             if (!(tmpHxs[hdrNum] & PRS_HDR_SW_PRS_EN))
-                tmpHxs[hdrNum] |= (PRS_HDR_SW_PRS_EN
-                        | OFFLOAD_SW_PATCH_IPv6_LABEL);
-        }
+                tmpHxs[hdrNum] |= (PRS_HDR_SW_PRS_EN | OFFLOAD_SW_PATCH_IPv6_IPR_LABEL);
+        } else {
+            if (FmPcdNetEnvIsHdrExist(p_FmPort->h_FmPcd, p_FmPort->netEnvId, HEADER_TYPE_UDP_LITE))
+            {
+                hdrNum = GetPrsHdrNum(HEADER_TYPE_IPv6);
+                if (!(tmpHxs[hdrNum] & PRS_HDR_SW_PRS_EN))
+                    tmpHxs[hdrNum] |= (PRS_HDR_SW_PRS_EN | OFFLOAD_SW_PATCH_IPv6_IPF_LABEL);
+            } else if ((FmPcdIsAdvancedOffloadSupported(p_FmPort->h_FmPcd)
+                       && (p_FmPort->portType == e_FM_PORT_TYPE_OH_OFFLINE_PARSING)))
+                {
+                    hdrNum = GetPrsHdrNum(HEADER_TYPE_IPv6);
+                    if (!(tmpHxs[hdrNum] & PRS_HDR_SW_PRS_EN))
+                        tmpHxs[hdrNum] |= (PRS_HDR_SW_PRS_EN | OFFLOAD_SW_PATCH_IPv6_IPF_LABEL);
+                }
+            }
 
 #if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
         if (FmPcdNetEnvIsHdrExist(p_FmPort->h_FmPcd, p_FmPort->netEnvId,
@@ -1600,13 +1634,15 @@ static t_Error SetPcd(t_FmPort *p_FmPort, t_FmPortPcdParams *p_PcdParams)
         {
             hdrNum = GetPrsHdrNum(HEADER_TYPE_IPv6);
             WRITE_UINT32(p_FmPort->p_FmPortPrsRegs->hdrs[hdrNum].softSeqAttach,
-                         (PRS_HDR_SW_PRS_EN | OFFLOAD_SW_PATCH_IPv6_LABEL));
+                         (PRS_HDR_SW_PRS_EN | OFFLOAD_SW_PATCH_IPv6_IPF_LABEL));
         }
 
         WRITE_UINT32(*p_BmiPrsStartOffset, 0);
 
         p_FmPort->privateInfo = 0;
     }
+
+    FmPortCheckNApplyMacsec(p_FmPort);
 
     WRITE_UINT32(
             *p_BmiPrsStartOffset,
@@ -1849,43 +1885,6 @@ static t_Error DetachPCD(t_FmPort *p_FmPort)
 /*****************************************************************************/
 /*              Inter-module API routines                                    */
 /*****************************************************************************/
-
-void FmPortSetMacsecLcv(t_Handle h_FmPort)
-{
-    t_FmPort *p_FmPort = (t_FmPort*)h_FmPort;
-    volatile uint32_t *p_BmiCfgReg = NULL;
-    uint32_t macsecEn = BMI_PORT_CFG_EN_MACSEC;
-    uint32_t lcv, walking1Mask = 0x80000000;
-    uint8_t cnt = 0;
-
-    SANITY_CHECK_RETURN(p_FmPort, E_INVALID_HANDLE);
-    SANITY_CHECK_RETURN(!p_FmPort->p_FmPortDriverParam, E_INVALID_STATE);
-
-    if ((p_FmPort->portType != e_FM_PORT_TYPE_RX_10G)
-            && (p_FmPort->portType != e_FM_PORT_TYPE_RX))
-    {
-        REPORT_ERROR(MAJOR, E_INVALID_OPERATION, ("The routine is relevant for Rx ports only"));
-        return;
-    }
-
-    p_BmiCfgReg = &p_FmPort->port.bmi_regs->rx.fmbm_rcfg;
-    /* get LCV for MACSEC */
-    if ((p_FmPort->h_FmPcd)
-            && ((lcv = FmPcdGetMacsecLcv(p_FmPort->h_FmPcd, p_FmPort->netEnvId))
-                    != 0))
-    {
-        while (!(lcv & walking1Mask))
-        {
-            cnt++;
-            walking1Mask >>= 1;
-        }
-
-        macsecEn |= (uint32_t)cnt << BMI_PORT_CFG_MS_SEL_SHIFT;
-    }
-
-    WRITE_UINT32(*p_BmiCfgReg, GET_UINT32(*p_BmiCfgReg) | macsecEn);
-}
-
 void FmPortSetMacsecCmd(t_Handle h_FmPort, uint8_t dfltSci)
 {
     t_FmPort *p_FmPort = (t_FmPort*)h_FmPort;
@@ -3546,9 +3545,9 @@ t_Error FM_PORT_Disable(t_Handle h_FmPort)
     {
         DBG(WARNING, ("%s: BMI or QMI is Busy. Port forced down",
                p_FmPort->name));
-        err = E_OK;
     }
-    else if (err != 0)
+    else
+        if (err != 0)
         {
             RETURN_ERROR(MAJOR, E_INVALID_VALUE, ("fman_port_disable"));
         }
@@ -4235,7 +4234,8 @@ uint32_t FM_PORT_GetCounter(t_Handle h_FmPort, e_FmPortCounters counter)
                 queueType = E_FMAN_PORT_DEQ_CONFIRM;
                 break;
             default:
-                RETURN_ERROR(MAJOR, E_INVALID_STATE, ("Requested counter is not available"));
+                REPORT_ERROR(MINOR, E_INVALID_STATE, ("Requested counter is not available"));
+                return 0;
         }
 
         return fman_port_get_qmi_counter(&p_FmPort->port, queueType);
@@ -4316,7 +4316,7 @@ t_Error FM_PORT_ModifyCounter(t_Handle h_FmPort, e_FmPortCounters counter,
                 queueType = E_FMAN_PORT_DEQ_CONFIRM;
                 break;
             default:
-                RETURN_ERROR(MINOR, E_INVALID_STATE,
+                RETURN_ERROR(MAJOR, E_INVALID_STATE,
                              ("Requested counter is not available"));
         }
 
@@ -4720,7 +4720,8 @@ t_Error FM_PORT_PcdCcModifyTree(t_Handle h_FmPort, t_Handle h_CcTree)
     volatile uint32_t *p_BmiNia = NULL;
     uint32_t ccTreePhysOffset;
 
-    SANITY_CHECK_RETURN_ERROR(p_FmPort, E_INVALID_VALUE);
+    SANITY_CHECK_RETURN_ERROR(h_FmPort, E_INVALID_HANDLE);
+    SANITY_CHECK_RETURN_ERROR(h_CcTree, E_INVALID_HANDLE);
 
     if (p_FmPort->imEn)
         RETURN_ERROR(MAJOR, E_INVALID_OPERATION,
@@ -4886,6 +4887,7 @@ t_Error FM_PORT_SetPCD(t_Handle h_FmPort, t_FmPortPcdParams *p_PcdParam)
     t_FmPortGetSetCcParams fmPortGetSetCcParams;
 
     SANITY_CHECK_RETURN_ERROR(h_FmPort, E_INVALID_HANDLE);
+    SANITY_CHECK_RETURN_ERROR(p_PcdParam, E_NULL_POINTER);
     SANITY_CHECK_RETURN_ERROR(!p_FmPort->p_FmPortDriverParam, E_INVALID_STATE);
 
     if (p_FmPort->imEn)
@@ -4906,6 +4908,10 @@ t_Error FM_PORT_SetPCD(t_Handle h_FmPort, t_FmPortPcdParams *p_PcdParam)
 
     p_FmPort->h_FmPcd = FmGetPcdHandle(p_FmPort->h_Fm);
     ASSERT_COND(p_FmPort->h_FmPcd);
+
+    if (p_PcdParam->p_CcParams && !p_PcdParam->p_CcParams->h_CcTree)
+        RETURN_ERROR(MAJOR, E_INVALID_HANDLE,
+                     ("Tree handle must be given if CC is required"));
 
     memcpy(&modifiedPcdParams, p_PcdParam, sizeof(t_FmPortPcdParams));
     p_PcdParams = &modifiedPcdParams;

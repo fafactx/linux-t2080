@@ -413,24 +413,6 @@ switch (exception){                                         \
 /* @} */
 
 /**************************************************************************//**
- @Description       Modules registers offsets
-*//***************************************************************************/
-#define FM_MM_MURAM             0x00000000
-#define FM_MM_BMI               0x00080000
-#define FM_MM_QMI               0x00080400
-#define FM_MM_PRS               0x000c7000
-#define FM_MM_KG                0x000C1000
-#define FM_MM_DMA               0x000C2000
-#define FM_MM_FPM               0x000C3000
-#define FM_MM_PLCR              0x000C0000
-#define FM_MM_IMEM              0x000C4000
-#define FM_MM_CGP               0x000DB000
-#define FM_MM_TRB(i)            (0x000D0200 + 0x400 * (i))
-#if (DPAA_VERSION >= 11)
-#define FM_MM_SP                0x000dc000
-#endif /* (DPAA_VERSION >= 11) */
-
-/**************************************************************************//**
  @Description       Memory Mapped Registers
 *//***************************************************************************/
 
@@ -602,7 +584,6 @@ typedef struct t_FmSp {
     t_FmMapParam    portsMapping[FM_MAX_NUM_OF_PORTS];
 } t_FmSp;
 #endif /* (DPAA_VERSION >= 11) */
-
 
 typedef struct t_Fm
 {
