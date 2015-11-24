@@ -94,8 +94,6 @@
 
 #define IOC_FM_PCD_PRS_NUM_OF_LABELS                    32                  /**< Maximum number of SW parser labels */
 #define IOC_FM_PCD_SW_PRS_SIZE                          0x00000800          /**< Total size of SW parser area */
-#define IOC_FM_PCD_PRS_SW_OFFSET                        0x00000040          /**< Size of illegal addresses at the beginning
-                                                                             of the SW parser area */
 
 #define IOC_FM_PCD_MAX_MANIP_INSRT_TEMPLATE_SIZE        128                 /**< Maximum size of insertion template for
                                                                              insert manipulation */
@@ -1833,6 +1831,11 @@ typedef struct ioc_fm_pcd_manip_special_offload_ipsec_params_t {
     uint8_t outer_ip_hdr_len;               /**< If 'variable_ip_version == TRUE' than this field must be set to non-zero value;
                                                  It is specifies the length of the outer IP header that was configured in the
                                                  corresponding SA. */
+    uint16_t    arw_size;                   /**< if <> '0' then will perform ARW check for this SA;
+                                                 The value must be a multiplication of 16 */
+    void    *arw_addr;                      /**< if arwSize <> '0' then this field must be set to non-zero value;
+                                                 MUST be allocated from FMAN's MURAM that the post-sec op-port belong
+                                                 Must be 4B aligned. Required MURAM size is '(NEXT_POWER_OF_2(arwSize+32))/8+4' Bytes */
 } ioc_fm_pcd_manip_special_offload_ipsec_params_t;
 
 #if (DPAA_VERSION >= 11)

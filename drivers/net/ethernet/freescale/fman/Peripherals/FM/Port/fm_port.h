@@ -214,20 +214,23 @@ typedef uint32_t fmPcdEngines_t; /**< options as defined below: */
 /*          SW parser OFFLOAD labels (offsets)                         */
 /***********************************************************************/
 #if (DPAA_VERSION == 10)
-#define OFFLOAD_SW_PATCH_IPv4_SIZE              0x025
-#define OFFLOAD_SW_PATCH_IPv4_LABEL             0x300
+#define OFFLOAD_SW_PATCH_IPv4_IPR_LABEL         0x300
+#define OFFLOAD_SW_PATCH_IPv6_IPR_LABEL         0x325
+#define OFFLOAD_SW_PATCH_IPv6_IPF_LABEL         0x325
 #else
-#define OFFLOAD_SW_PATCH_IPv4_SIZE              0x046
-#define OFFLOAD_SW_PATCH_IPv4_LABEL             0x1D0
-#define OFFLOAD_CAPWAP_SW_PATCH_LABEL           0x38d
-#endif /* (DPAA_VERSION == 10) */
+#define OFFLOAD_SW_PATCH_IPv4_IPR_LABEL         0x100
 /* Will be used for:
  * 1. identify fragments
- * 2. if no fragment, will identify the fragmentable are
- * 3. udp-lite
+ * 2. udp-lite
  */
-#define OFFLOAD_SW_PATCH_IPv6_LABEL             \
-    (OFFLOAD_SW_PATCH_IPv4_LABEL + OFFLOAD_SW_PATCH_IPv4_SIZE)
+#define OFFLOAD_SW_PATCH_IPv6_IPR_LABEL         0x146
+/* Will be used for:
+ * 1. will identify the fragmentable area
+ * 2. udp-lite
+ */
+#define OFFLOAD_SW_PATCH_IPv6_IPF_LABEL         0x261
+#define OFFLOAD_SW_PATCH_CAPWAP_LABEL           0x38d
+#endif /* (DPAA_VERSION == 10) */
 
 #if ((DPAA_VERSION == 10) && defined(FM_CAPWAP_SUPPORT))
 #define UDP_LITE_SW_PATCH_LABEL                 0x2E0
@@ -429,7 +432,7 @@ typedef struct
     volatile uint32_t   reserved0[4];   /**<   0xn00C - 0xn01B */
     volatile uint32_t   fmqm_pnen;      /**<   PortID n Enqueue NIA Register */
     volatile uint32_t   fmqm_pnetfc;    /**<   PortID n Enqueue Total Frame Counter */
-    t_FmPortNonRxQmiRegs    nonRxQmiRegs;  /**<   Registers for Tx Hc & Op ports */
+    t_FmPortNonRxQmiRegs nonRxQmiRegs;  /**<   Registers for Tx Hc & Op ports */
 } t_FmPortQmiRegs;
 
 typedef struct
@@ -439,7 +442,7 @@ typedef struct
         volatile uint32_t   softSeqAttach;  /**<   Soft Sequence Attachment */
         volatile uint32_t   lcv;            /**<   Line-up Enable Confirmation Mask */
     } hdrs[FM_PCD_PRS_NUM_OF_HDRS];
-    volatile uint8_t    reserved0[0x378];
+    volatile uint32_t   reserved0[0xde];
     volatile uint32_t   pcac;               /**<   Parse Internal Memory Configuration Access Control Register */
     volatile uint32_t   pctpid;             /**<   Parse Internal Memory Configured TPID Register */
 } t_FmPortPrsRegs;

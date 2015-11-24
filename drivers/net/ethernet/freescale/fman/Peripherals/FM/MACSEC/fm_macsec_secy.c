@@ -678,31 +678,6 @@ t_Error FM_MACSEC_SECY_RxSaModifyKey(t_Handle h_FmMacsecSecY, t_Handle h_Sc, mac
     return err;
 }
 
-#if 0
-t_Handle FM_MACSEC_SECY_CreateTxSc(t_Handle h_FmMacsecSecY, macsecSCI_t sci)
-{
-    t_FmMacsecSecY  *p_FmMacsecSecY = (t_FmMacsecSecY *)h_FmMacsecSecY;
-
-    SANITY_CHECK_RETURN_VALUE(p_FmMacsecSecY, E_INVALID_HANDLE, NULL);
-    SANITY_CHECK_RETURN_VALUE(p_FmMacsecSecY->h_FmMacsec, E_INVALID_HANDLE, NULL);
-    SANITY_CHECK_RETURN_VALUE(!p_FmMacsecSecY->p_FmMacsecSecYDriverParam, E_INVALID_STATE, NULL);
-
-    return FmMacsecSecYCreateSc(p_FmMacsecSecY, sci, e_SC_TX);
-}
-
-t_Error FM_MACSEC_SECY_DeleteTxSc(t_Handle h_FmMacsecSecY, t_Handle h_Sc)
-{
-    t_FmMacsecSecY  *p_FmMacsecSecY = (t_FmMacsecSecY *)h_FmMacsecSecY;
-    t_SecYSc        *p_FmSecYSc = (t_SecYSc *)h_Sc;
-
-    SANITY_CHECK_RETURN_ERROR(p_FmMacsecSecY, E_INVALID_HANDLE);
-    SANITY_CHECK_RETURN_ERROR(p_FmMacsecSecY->h_FmMacsec, E_INVALID_HANDLE);
-    SANITY_CHECK_RETURN_ERROR(!p_FmMacsecSecY->p_FmMacsecSecYDriverParam, E_INVALID_STATE);
-    SANITY_CHECK_RETURN_ERROR(p_FmSecYSc, E_INVALID_HANDLE);
-
-    return FmMacsecSecYDeleteSc(p_FmMacsecSecY, p_FmSecYSc, e_SC_TX);
-}
-#endif /* 0 */
 
 t_Error FM_MACSEC_SECY_CreateTxSa(t_Handle h_FmMacsecSecY, macsecAN_t an, macsecSAKey_t key)
 {
