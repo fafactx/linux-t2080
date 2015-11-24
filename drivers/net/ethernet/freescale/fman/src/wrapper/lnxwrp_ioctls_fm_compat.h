@@ -562,12 +562,11 @@ typedef struct ioc_compat_fm_vsp_prs_result_params_t {
     compat_uptr_t p_data;
 } ioc_compat_fm_vsp_prs_result_params_t;
 
+#endif /* (DPAA_VERSION >= 11) */
 typedef struct ioc_compat_fm_pcd_kg_scheme_spc_t {
     uint32_t        val;
     compat_uptr_t   id;
 } ioc_compat_fm_pcd_kg_scheme_spc_t;
-
-#endif /* (DPAA_VERSION >= 11) */
 
 typedef struct ioc_compat_fm_ctrl_mon_counters_params_t {
     uint8_t     fm_ctrl_index;
@@ -746,10 +745,12 @@ void compat_copy_fm_vsp_prs_result_params(
     ioc_fm_vsp_prs_result_params_t *param,
     uint8_t compat);
 
+#endif /* (DPAA_VERSION >= 11) */
+
 void compat_copy_fm_pcd_kg_scheme_spc(
         ioc_compat_fm_pcd_kg_scheme_spc_t *compat_param,
         ioc_fm_pcd_kg_scheme_spc_t *param,
         uint8_t compat);
-#endif /* (DPAA_VERSION >= 11) */
+
 /* } pcd compat functions */
 #endif
