@@ -1510,12 +1510,6 @@ typedef struct ioc_fm_pcd_hash_table_params_t {
 
     ioc_fm_pcd_cc_next_engine_params_t   cc_next_engine_params_for_miss;
                                                             /**< Parameters for defining the next engine when a key is not matched */
-    bool                        aging_support;              /**< TRUE to enable aging support for all keys of this hash table;
-                                                                 Aging status of a key enables the application to monitor if the
-                                                                 key was accessed for a certain period of time, meaning if a
-                                                                 packet that matches this key was received since this bit was last
-                                                                 set by the application */
-
     void                        *id;
 } ioc_fm_pcd_hash_table_params_t;
 

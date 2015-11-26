@@ -248,12 +248,12 @@ typedef struct
 }t_CcNodeInformation;
 #define CC_NODE_F_OBJECT(ptr)  LIST_OBJECT(ptr, t_CcNodeInformation, node)
 
-typedef enum e_FmCcModifyState
+typedef enum e_ModifyState
 {
     e_MODIFY_STATE_ADD = 0,
     e_MODIFY_STATE_REMOVE,
     e_MODIFY_STATE_CHANGE
-} e_FmCcModifyState;
+} e_ModifyState;
 
 typedef struct
 {

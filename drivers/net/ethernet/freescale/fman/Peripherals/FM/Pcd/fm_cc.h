@@ -284,7 +284,6 @@ typedef struct
     t_Handle            h_FrmReplicForRmv;
 #endif /* (DPAA_VERSION >= 11) */
     bool                tree;
-    e_FmCcModifyState   modifyState;
 
     t_FmPcdCcKeyAndNextEngineParams  keyAndNextEngineParams[CC_MAX_NUM_OF_KEYS];
 } t_FmPcdModifyCcKeyAdditionalParams;
@@ -308,7 +307,6 @@ typedef struct
     uint32_t            countersArraySize;
 
     bool                isHashBucket;               /**< Valid for match table node that is a bucket of a hash table only */
-    bool                agingSupport;               /**< Valid for match table node that is a bucket of a hash table only */
     t_Handle            h_MissStatsCounters;        /**< Valid for hash table node and match table that is a bucket;
                                                          Holds the statistics counters allocated by the hash table and
                                                          are shared by all hash table buckets; */

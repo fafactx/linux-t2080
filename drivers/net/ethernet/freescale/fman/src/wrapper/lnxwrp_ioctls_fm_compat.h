@@ -297,7 +297,6 @@ typedef struct ioc_compat_fm_pcd_hash_table_params_t {
     uint8_t                     hash_shift;
     uint8_t                     match_key_size;
     ioc_compat_fm_pcd_cc_next_engine_params_t   cc_next_engine_params_for_miss;
-    bool                        aging_support;
     compat_uptr_t               id;
 } ioc_compat_fm_pcd_hash_table_params_t;
 

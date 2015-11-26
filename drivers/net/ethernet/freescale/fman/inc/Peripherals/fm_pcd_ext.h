@@ -1989,11 +1989,6 @@ typedef struct t_FmPcdHashTableParams {
 
     t_FmPcdCcNextEngineParams   ccNextEngineParamsForMiss;  /**< Parameters for defining the next engine when a key is not matched */
 
-    bool                        agingSupport;               /**< TRUE to enable aging support for all keys of this hash table;
-                                                                 Aging status of a key enables the application to monitor if the
-                                                                 key was accessed for a certain period of time, meaning if a
-                                                                 packet that matches this key was received since this bit was last
-                                                                 set by the application */
 } t_FmPcdHashTableParams;
 
 /**************************************************************************//**
@@ -3766,75 +3761,6 @@ t_Error FM_PCD_HashTableFindNGetKeyStatistics(t_Handle                 h_HashTbl
 *//***************************************************************************/
 t_Error FM_PCD_HashTableGetMissStatistics(t_Handle                 h_HashTbl,
                                           t_FmPcdCcKeyStatistics   *p_MissStatistics);
-
-/**************************************************************************//**
-@Function      FM_PCD_HashTableGetKeyAging
-
-@Description   This routine may be used to retrieve the aging status for the
-               provided key.
-
-@Param[in]     h_HashTbl       A handle to a hash table
-@Param[in]     p_Key           Pointer to a key
-@Param[in]     keySize         Size of provided key
-@Param[in]     reset           TRUE if the user wishes to reset the aging
-                               status of this key to 1 after reading it;
-                               FALSE otherwise (key aging status will be
-                               read and not changed);
-@Param[out]    p_KeyAging      FALSE if the provided key was accessed since
-                               it's status was last set, TRUE otherwise.
-
-@Return        E_OK on success; Error code otherwise.
-
-@Cautions      Allowed only following FM_PCD_HashTableSet() with aging support
-               enabled.
-*//***************************************************************************/
-t_Error FM_PCD_HashTableGetKeyAging(t_Handle h_HashTbl,
-                                    uint8_t *p_Key,
-                                    uint8_t keySize,
-                                    bool reset,
-                                    bool *p_KeyAging);
-
-/**************************************************************************//**
-@Function      FM_PCD_HashTableGetBucketAging
-
-@Description   This routine may be used to retrieve the aging status for the
-               hash table bucket.
-
-@Param[in]     h_HashTbl            A handle to a hash table
-@Param[in]     bucketId             Id of the requested bucket
-@Param[in]     reset                TRUE if the user wishes to reset the aging
-                                    status of this bucket to all 1-s after reading;
-                                    FALSE otherwise (aging mask will be read
-                                    and not changed)
-@Param[out]    p_BucketAgingMask    Aging mask of the requested bucket;
-                                    A zero bit in the mask means that the key
-                                    represented by that bit was accessed since the
-                                    bit was last set, otherwise the bit remains
-                                    set to 1;
-                                    The MSB bit represents the first key in the
-                                    bucket, the 2nd MSB bit represents the second
-                                    key, etc..
-@Param[out]    agedKeysArray        If the user will provide a handle to a
-                                    preallocated array, this routine will copy
-                                    into that array all the keys from the requested
-                                    bucket for which the aging status is non-zero,
-                                    meaning all the keys that were not accessed since
-                                    their aging mask was last set;
-                                    The user may set this parameters to NULL to
-                                    disable this option
-
-@Return        E_OK on success; Error code otherwise
-
-@Cautions      Allowed only following FM_PCD_HashTableSet() with aging support
-               Enabled;
-               If agedKeysArray is provided, it must have 31 entries large enough
-               to hold the entire keys
-*//***************************************************************************/
-t_Error FM_PCD_HashTableGetBucketAging(t_Handle h_HashTbl,
-                                       uint16_t bucketId,
-                                       bool reset,
-                                       uint32_t *p_BucketAgingMask,
-                                       uint8_t *agedKeysArray[31]);
 
 /**************************************************************************//**
  @Function      FM_PCD_ManipNodeSet
